@@ -43,8 +43,10 @@ class Settings(BaseSettings):
     perplexity_api_key: str | None = None
 
     # --- Default models ----------------------------------------------------
-    default_provider_model: str = "gpt-4o"
-    default_judge_model: str = "claude-sonnet-4-6"
+    # Cost-efficient defaults: gpt-4o-mini for answer capture, Haiku-class
+    # (cheapest current Claude) for the LLM-as-judge scoring pass.
+    default_provider_model: str = "gpt-4o-mini"
+    default_judge_model: str = "claude-haiku-4-5-20251001"
 
 
 @lru_cache

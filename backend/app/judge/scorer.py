@@ -8,6 +8,7 @@ for the scaffold; ``parse_judge_output`` is real so the contract is testable.
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import dataclass, field
 
 from app.config import settings
@@ -17,8 +18,14 @@ from app.judge.rubric import (
     judge_prompt_hash,
 )
 from app.models.score import Sentiment
+from app.providers import ProviderError, provider_for_model
+
+logger = logging.getLogger(__name__)
 
 _VALID_SENTIMENTS = {s.value for s in Sentiment}
+
+#: How many times to re-query the judge when it returns unparseable JSON.
+DEFAULT_JUDGE_MAX_RETRIES = 2
 
 
 @dataclass(slots=True)
@@ -31,6 +38,8 @@ class ScoreResult:
     cited_sources: list[str] = field(default_factory=list)
     judge_model: str = ""
     judge_prompt_hash: str = ""
+    #: Tokens the judge call itself consumed (for budget accounting); not persisted on Score.
+    judge_token_count: int | None = None
 
 
 def build_judge_user_message(brand_name: str, aliases: list[str], answer_text: str) -> str:
@@ -84,18 +93,44 @@ async def score_answer(
     answer_text: str,
     judge_model: str | None = None,
     prompt_version: str = CURRENT_JUDGE_PROMPT_VERSION,
+    max_retries: int = DEFAULT_JUDGE_MAX_RETRIES,
 ) -> ScoreResult:
     """Run the judge over a single answer and return a ``ScoreResult``.
 
-    The actual judge model invocation is stubbed for the scaffold; the system
-    prompt and user message are fully assembled so wiring a provider is a
-    one-liner.
+    Calls the configured judge model (defaulting to the cheapest available
+    Haiku-class model) with the pinned rubric, then parses the strict-JSON
+    response. The ``judge_model`` and ``judge_prompt_hash`` are recorded on the
+    result for reproducibility. Unparseable JSON is retried up to
+    ``max_retries`` times before giving up.
     """
 
     judge_model = judge_model or settings.default_judge_model
-    system_prompt = get_judge_prompt(prompt_version)  # noqa: F841 - used once live
-    user_message = build_judge_user_message(brand_name, aliases, answer_text)  # noqa: F841
+    provider = provider_for_model(judge_model)
+    system_prompt = get_judge_prompt(prompt_version)
+    user_message = build_judge_user_message(brand_name, aliases, answer_text)
 
-    # TODO: call the judge model with (system_prompt, user_message), then:
-    #   return parse_judge_output(response_text, judge_model, prompt_version)
-    raise NotImplementedError("score_answer is a scaffold stub")
+    # BaseProvider.query takes a single prompt; fold the rubric (system) and the
+    # answer payload (user) into one message to stay vendor-agnostic.
+    full_prompt = f"{system_prompt}\n\n{user_message}"
+
+    last_error: ValueError | None = None
+    for attempt in range(max_retries + 1):
+        response = await provider.query(full_prompt)
+        try:
+            result = parse_judge_output(response.text, judge_model, prompt_version)
+            result.judge_token_count = response.token_count
+            return result
+        except ValueError as exc:
+            last_error = exc
+            logger.warning(
+                "Judge returned invalid JSON (attempt %d/%d) on model %s: %s",
+                attempt + 1,
+                max_retries + 1,
+                judge_model,
+                exc,
+            )
+
+    raise ProviderError(
+        f"Judge model {judge_model!r} did not return valid JSON after "
+        f"{max_retries + 1} attempts: {last_error}"
+    )

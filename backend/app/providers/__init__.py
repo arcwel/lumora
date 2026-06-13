@@ -8,7 +8,7 @@ in ``.env.example``).
 from __future__ import annotations
 
 from app.providers.anthropic import AnthropicProvider
-from app.providers.base import BaseProvider, ProviderResponse
+from app.providers.base import BaseProvider, ProviderError, ProviderResponse
 from app.providers.gemini import GeminiProvider
 from app.providers.openai import OpenAIProvider
 
@@ -29,12 +29,38 @@ def get_provider(name: str, **kwargs) -> BaseProvider:
     return provider_cls(**kwargs)
 
 
+def provider_name_for_model(model: str) -> str:
+    """Map a model id to its provider name by well-known prefixes.
+
+    Falls back to ``"anthropic"`` (the cheapest Haiku-class default) so an
+    unrecognized model still routes somewhere sensible.
+    """
+
+    name = model.lower()
+    if name.startswith("claude"):
+        return "anthropic"
+    if name.startswith(("gpt", "o1", "o3", "o4", "chatgpt")):
+        return "openai"
+    if name.startswith("gemini"):
+        return "gemini"
+    return "anthropic"
+
+
+def provider_for_model(model: str, **kwargs) -> BaseProvider:
+    """Instantiate the provider adapter that serves ``model``."""
+
+    return get_provider(provider_name_for_model(model), model=model, **kwargs)
+
+
 __all__ = [
     "AnthropicProvider",
     "BaseProvider",
     "GeminiProvider",
     "OpenAIProvider",
     "PROVIDER_REGISTRY",
+    "ProviderError",
     "ProviderResponse",
     "get_provider",
+    "provider_for_model",
+    "provider_name_for_model",
 ]

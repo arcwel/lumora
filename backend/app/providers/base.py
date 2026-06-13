@@ -9,6 +9,18 @@ from __future__ import annotations
 import abc
 from dataclasses import dataclass
 
+#: Default per-request settings shared by the concrete adapters.
+DEFAULT_MAX_TOKENS = 1024
+DEFAULT_TIMEOUT_SECONDS = 60.0
+
+
+class ProviderError(RuntimeError):
+    """Raised when a provider call fails (auth, rate limit, timeout, API error).
+
+    Wrapping vendor-specific exceptions in a single type lets the scheduler and
+    judge treat any provider failure uniformly without importing each SDK.
+    """
+
 
 @dataclass(slots=True)
 class ProviderResponse:

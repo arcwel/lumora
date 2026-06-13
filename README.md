@@ -87,10 +87,18 @@ This brings up the FastAPI app against a Postgres database.
 
 ## Status
 
-This is the MVP scaffold (Tasks 1 & 2): project structure, data models, API
-skeleton, judge rubric, and scheduler wiring. Provider SDK calls and the judge
-model invocation are present as clearly-marked stubs — the orchestration around
-them is complete.
+Tasks 1–4 are complete: project structure, data models, API skeleton, and the
+**live provider adapters** (OpenAI, Anthropic, Gemini via the `google-genai`
+SDK) plus the **LLM-as-judge scoring pipeline**. The scheduler now runs the full
+loop — query each active prompt, persist answers, judge them, and persist scores
+— while respecting each project's monthly token budget.
+
+Smoke-test the providers (skips any without a key configured)::
+
+```bash
+cd backend
+python scripts/smoke_providers.py --judge
+```
 
 ## License
 
