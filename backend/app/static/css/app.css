@@ -1,0 +1,133 @@
+/* Lumora dashboard — supplemental styles on top of Tailwind.
+   Kept intentionally small: Tailwind utilities do most of the work; this file
+   holds reusable component classes and a couple of things utilities can't. */
+
+:root {
+  --accent: #4f46e5;
+}
+
+/* Smooth, restrained motion everywhere. */
+* {
+  -webkit-font-smoothing: antialiased;
+}
+a, button, .card, .badge {
+  transition: color .15s ease, background-color .15s ease, border-color .15s ease,
+              box-shadow .15s ease, transform .15s ease, opacity .15s ease;
+}
+
+/* ---- Sidebar nav links ---- */
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: .625rem;
+  border-radius: .5rem;
+  padding: .5rem .625rem;
+  font-size: .875rem;
+  font-weight: 500;
+  color: #475569;          /* slate-600 */
+}
+.nav-link:hover {
+  background-color: #f1f5f9; /* slate-100 */
+  color: #0f172a;            /* slate-900 */
+}
+.nav-link-active {
+  background-color: #eef2ff; /* accent-50 */
+  color: #4338ca;            /* accent-700 */
+}
+.nav-link-active:hover {
+  background-color: #e0e7ff; /* accent-100 */
+  color: #4338ca;
+}
+
+/* ---- Cards ---- */
+.card {
+  background: #fff;
+  border: 1px solid #e2e8f0;  /* slate-200 */
+  border-radius: 1rem;
+  box-shadow: 0 1px 2px 0 rgba(15, 23, 42, .04), 0 1px 3px 0 rgba(15, 23, 42, .06);
+}
+a.card:hover {
+  box-shadow: 0 4px 12px -2px rgba(15, 23, 42, .08), 0 2px 6px -2px rgba(15, 23, 42, .05);
+  transform: translateY(-1px);
+  border-color: #cbd5e1;     /* slate-300 */
+}
+
+/* ---- Status / sentiment badges ---- */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: .375rem;
+  border-radius: 9999px;
+  padding: .125rem .625rem;
+  font-size: .75rem;
+  font-weight: 500;
+  line-height: 1.25rem;
+}
+.badge-dot { width: .375rem; height: .375rem; border-radius: 9999px; }
+
+.badge-completed { background: #ecfdf5; color: #047857; }   /* emerald */
+.badge-completed .badge-dot { background: #10b981; }
+.badge-running   { background: #fffbeb; color: #b45309; }   /* amber */
+.badge-running .badge-dot { background: #f59e0b; }
+.badge-pending   { background: #f1f5f9; color: #475569; }   /* slate */
+.badge-pending .badge-dot { background: #94a3b8; }
+.badge-failed    { background: #fef2f2; color: #b91c1c; }   /* rose */
+.badge-failed .badge-dot { background: #ef4444; }
+
+.badge-pos { background: #ecfdf5; color: #047857; }
+.badge-neu { background: #f1f5f9; color: #475569; }
+.badge-neg { background: #fef2f2; color: #b91c1c; }
+
+/* ---- Trend pill (up/down) ---- */
+.trend-up   { color: #047857; background: #ecfdf5; }
+.trend-down { color: #b91c1c; background: #fef2f2; }
+.trend-flat { color: #475569; background: #f1f5f9; }
+
+/* ---- Skeleton loading shimmer ---- */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: #eef2f6;
+  border-radius: .5rem;
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .6), transparent);
+  animation: shimmer 1.4s infinite;
+}
+@keyframes shimmer { 100% { transform: translateX(100%); } }
+
+/* ---- Spinner ---- */
+.spinner {
+  width: 1rem; height: 1rem;
+  border: 2px solid #c7d2fe;
+  border-top-color: #4f46e5;
+  border-radius: 9999px;
+  animation: spin .6s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* HTMX in-flight: show elements marked .htmx-indicator only during a request. */
+.htmx-indicator { opacity: 0; }
+.htmx-request .htmx-indicator { opacity: 1; }
+.htmx-request.htmx-indicator { opacity: 1; }
+
+/* ---- Sparkline bars ---- */
+.spark { display: flex; align-items: flex-end; gap: 2px; height: 28px; }
+.spark span {
+  flex: 1 1 0;
+  min-width: 2px;
+  border-radius: 2px 2px 0 0;
+  background: #c7d2fe;       /* accent-200 */
+}
+.spark span:last-child { background: #4f46e5; } /* accent-600 highlights latest */
+
+/* Subtle fade-in for newly swapped content. */
+.fade-in { animation: fadeIn .25s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: none; } }
+
+/* Tabular figures for metrics so digits don't jitter. */
+.tnum { font-variant-numeric: tabular-nums; }

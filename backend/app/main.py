@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import logging
-from contextlib import asynccontextmanager
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
@@ -13,6 +13,7 @@ from app.api import api_router
 from app.config import settings
 from app.db import init_db, is_sqlite
 from app.scheduler.runner import shutdown_scheduler, start_scheduler
+from app.web import register_web
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -47,6 +48,15 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Mount static assets and (when Jinja2 is installed) the server-rendered
+# dashboard. ``ui_enabled`` is False in environments without Jinja2 — the JSON
+# API stays fully functional and a friendly root payload is served instead.
+#
+# The web router is registered BEFORE the JSON API so its literal HTML paths
+# (e.g. ``/projects/new``) take precedence over the CRUD integer route
+# ``/projects/{project_id}`` — otherwise "new" would be parsed as an id and 422.
+ui_enabled = register_web(app)
+
 app.include_router(api_router)
 
 
@@ -62,8 +72,10 @@ def health() -> dict[str, str]:
     }
 
 
-@app.get("/", tags=["meta"])
-def root() -> dict[str, str]:
-    """Friendly root payload."""
+if not ui_enabled:
 
-    return {"name": settings.app_name, "version": __version__, "docs": "/docs"}
+    @app.get("/", tags=["meta"])
+    def root() -> dict[str, str]:
+        """Friendly root payload (served when the HTML dashboard is disabled)."""
+
+        return {"name": settings.app_name, "version": __version__, "docs": "/docs"}

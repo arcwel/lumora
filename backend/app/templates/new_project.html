@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}New project · Lumora{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+  <a href="/" class="text-xs font-medium text-slate-400 hover:text-slate-600">← Dashboard</a>
+</div>
+
+<div class="mx-auto max-w-xl">
+  <h1 class="text-2xl font-semibold tracking-tight text-slate-900">New project</h1>
+  <p class="mt-1 text-sm text-slate-500">Track how AI assistants mention a brand over time.</p>
+
+  <form method="post" action="/projects/new" class="card mt-6 space-y-5 p-6">
+    <div>
+      <label class="block text-sm font-medium text-slate-700">Project name</label>
+      <input name="name" required placeholder="Acme — AI Visibility"
+             class="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-accent-500 focus:outline-none focus:ring-2 focus:ring-accent-100" />
+      <p class="mt-1 text-xs text-slate-400">An internal label for this workspace.</p>
+    </div>
+    <div>
+      <label class="block text-sm font-medium text-slate-700">Brand name</label>
+      <input name="brand_name" required placeholder="Acme"
+             class="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-accent-500 focus:outline-none focus:ring-2 focus:ring-accent-100" />
+      <p class="mt-1 text-xs text-slate-400">The exact brand we look for in answers.</p>
+    </div>
+    <div>
+      <label class="block text-sm font-medium text-slate-700">Aliases</label>
+      <input name="aliases" placeholder="AcmeCo, Acme Inc"
+             class="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-accent-500 focus:outline-none focus:ring-2 focus:ring-accent-100" />
+      <p class="mt-1 text-xs text-slate-400">Comma-separated alternative spellings.</p>
+    </div>
+    <div>
+      <label class="block text-sm font-medium text-slate-700">Competitors</label>
+      <input name="competitors" placeholder="Globex, Initech"
+             class="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-accent-500 focus:outline-none focus:ring-2 focus:ring-accent-100" />
+      <p class="mt-1 text-xs text-slate-400">Comma-separated, for context.</p>
+    </div>
+
+    <div class="flex items-center justify-end gap-3 border-t border-slate-100 pt-4">
+      <a href="/" class="rounded-lg px-3.5 py-2 text-sm font-medium text-slate-500 hover:text-slate-700">Cancel</a>
+      <button type="submit" class="rounded-lg bg-accent-600 px-4 py-2 text-sm font-medium text-white hover:bg-accent-700">Create project</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

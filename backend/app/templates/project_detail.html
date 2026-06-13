@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+{% block title %}{{ project.brand_name }} · Lumora{% endblock %}
+
+{% block sidebar_extra %}
+<div class="mt-6 mb-2 px-2.5 text-xs font-semibold uppercase tracking-wide text-slate-400">{{ project.brand_name }}</div>
+<a href="/projects/{{ project.id }}/view" class="nav-link {{ 'nav-link-active' if nav == 'detail' else '' }}">
+  <svg class="h-[18px] w-[18px]" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12h4l3 8 4-16 3 8h4"/></svg>
+  Overview
+</a>
+<a href="/projects/{{ project.id }}/settings" class="nav-link {{ 'nav-link-active' if nav == 'settings' else '' }}">
+  <svg class="h-[18px] w-[18px]" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path stroke-linecap="round" d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 6.8 19.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 4 13.6H4a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 5.7 7.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 11 4.1V4a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg>
+  Settings
+</a>
+{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb + header -->
+<div class="mb-6">
+  <a href="/" class="text-xs font-medium text-slate-400 hover:text-slate-600">← Dashboard</a>
+</div>
+<div class="mb-8 flex flex-wrap items-start justify-between gap-4">
+  <div>
+    <h1 class="text-2xl font-semibold tracking-tight text-slate-900">{{ project.brand_name }}</h1>
+    <p class="mt-1 text-sm text-slate-500">{{ project.name }}</p>
+  </div>
+  <div class="flex items-center gap-2">
+    <a href="/projects/{{ project.id }}/export.csv"
+       class="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+      <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2"/></svg>
+      Export CSV
+    </a>
+    <button
+      hx-post="/projects/{{ project.id }}/run"
+      hx-target="#snapshots-list"
+      hx-swap="innerHTML"
+      hx-disabled-elt="this"
+      class="inline-flex items-center gap-1.5 rounded-lg bg-accent-600 px-3.5 py-2 text-sm font-medium text-white shadow-sm hover:bg-accent-700 disabled:opacity-60">
+      <span class="htmx-indicator spinner"></span>
+      <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m6 4 14 8L6 20z"/></svg>
+      Run snapshot
+    </button>
+  </div>
+</div>
+
+<!-- Hero metric -->
+<div class="grid grid-cols-1 gap-5 lg:grid-cols-3">
+  <div class="card p-6 lg:col-span-1">
+    <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Overall mention rate</p>
+    <div class="mt-2 flex items-end gap-3">
+      <span class="tnum text-5xl font-semibold tracking-tight text-slate-900">{{ project.mention_rate|pct }}</span>
+      {% if project.mention_rate_change is not none and project.mention_rate_change != 0 %}
+        {% set up = project.mention_rate_change > 0 %}
+        <span class="badge {{ 'trend-up' if up else 'trend-down' }} mb-1.5">
+          {% if up %}
+            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/></svg>
+          {% else %}
+            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+          {% endif %}
+          {{ project.mention_rate_change|signed_pct }}
+        </span>
+      {% endif %}
+    </div>
+    <p class="mt-3 text-xs text-slate-400">
+      {% if project.latest_run_at %}Last run {{ project.latest_run_at|ago }}{% else %}No completed runs yet{% endif %}
+    </p>
+  </div>
+
+  <div class="card grid grid-cols-3 divide-x divide-slate-100 p-0 lg:col-span-2">
+    <div class="p-6">
+      <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Prompts</p>
+      <p class="tnum mt-2 text-2xl font-semibold text-slate-900">{{ project.n_active_prompts }}</p>
+      <p class="mt-1 text-xs text-slate-400">of {{ project.n_prompts }} total</p>
+    </div>
+    <div class="p-6">
+      <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Snapshots</p>
+      <p class="tnum mt-2 text-2xl font-semibold text-slate-900">{{ project.n_runs }}</p>
+      <p class="mt-1 text-xs text-slate-400">total runs</p>
+    </div>
+    <div class="p-6">
+      <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Providers</p>
+      <p class="tnum mt-2 text-2xl font-semibold text-slate-900">{{ project.providers|length }}</p>
+      <p class="mt-1 text-xs text-slate-400">tracked</p>
+    </div>
+  </div>
+</div>
+
+<!-- Charts -->
+<div class="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-5"
+     data-project-id="{{ project.id }}">
+  <div class="card p-6 lg:col-span-3">
+    <div class="mb-4 flex items-center justify-between">
+      <h2 class="text-sm font-semibold text-slate-900">Mention rate over time</h2>
+      <span class="text-xs text-slate-400">per provider</span>
+    </div>
+    <div class="relative h-64">
+      <canvas id="trendChart"></canvas>
+      <p id="trendEmpty" class="absolute inset-0 hidden items-center justify-center text-sm text-slate-400">No trend data yet</p>
+    </div>
+  </div>
+  <div class="card p-6 lg:col-span-2">
+    <div class="mb-4 flex items-center justify-between">
+      <h2 class="text-sm font-semibold text-slate-900">Provider comparison</h2>
+      <span class="text-xs text-slate-400">latest run</span>
+    </div>
+    <div class="relative h-64">
+      <canvas id="comparisonChart"></canvas>
+      <p id="comparisonEmpty" class="absolute inset-0 hidden items-center justify-center text-sm text-slate-400">No data yet</p>
+    </div>
+  </div>
+</div>
+
+<!-- Prompt performance -->
+<div class="mt-5 card overflow-hidden"
+     x-data="promptTable()" x-init="load()">
+  <div class="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+    <h2 class="text-sm font-semibold text-slate-900">Prompt performance</h2>
+    <span class="text-xs text-slate-400">{% if prompts_run_at %}as of {{ prompts_run_at|ago }}{% else %}no runs{% endif %}</span>
+  </div>
+
+  <template x-if="rows.length === 0">
+    <div class="px-6 py-12 text-center text-sm text-slate-400">No prompts configured yet.</div>
+  </template>
+
+  <table class="min-w-full text-sm" x-show="rows.length > 0">
+    <thead>
+      <tr class="border-b border-slate-100 text-left text-xs font-medium uppercase tracking-wide text-slate-400">
+        <th class="px-6 py-3">
+          <button @click="sortBy('text')" class="inline-flex items-center gap-1 hover:text-slate-600">Prompt</button>
+        </th>
+        <th class="px-6 py-3">
+          <button @click="sortBy('mention_rate')" class="inline-flex items-center gap-1 hover:text-slate-600">
+            Mention rate
+            <span x-show="sort.key === 'mention_rate'" x-text="sort.dir === 'desc' ? '↓' : '↑'"></span>
+          </button>
+        </th>
+        <th class="px-6 py-3">By provider</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-slate-50">
+      <template x-for="row in sortedRows" :key="row.id">
+        <tr class="hover:bg-slate-50/60">
+          <td class="max-w-md px-6 py-4">
+            <p class="truncate font-medium text-slate-800" x-text="row.text" :title="row.text"></p>
+            <p class="mt-0.5 text-xs text-slate-400" x-show="row.category" x-text="row.category"></p>
+            <span x-show="!row.is_active" class="badge badge-pending mt-1"><span class="badge-dot"></span>Inactive</span>
+          </td>
+          <td class="px-6 py-4">
+            <span class="tnum text-base font-semibold text-slate-900"
+                  x-text="row.mention_rate === null ? '—' : Math.round(row.mention_rate * 100) + '%'"></span>
+          </td>
+          <td class="px-6 py-4">
+            <div class="flex flex-wrap gap-3">
+              <template x-for="prov in row.providers" :key="prov.provider">
+                <div class="flex items-center gap-2">
+                  <span class="text-xs font-medium text-slate-500" x-text="prov.provider"></span>
+                  <div class="h-1.5 w-16 overflow-hidden rounded-full bg-slate-100">
+                    <div class="h-full rounded-full bg-accent-500" :style="`width: ${Math.round(prov.mention_rate * 100)}%`"></div>
+                  </div>
+                  <span class="tnum text-xs text-slate-400" x-text="Math.round(prov.mention_rate * 100) + '%'"></span>
+                </div>
+              </template>
+              <span x-show="row.providers.length === 0" class="text-xs text-slate-300">no data</span>
+            </div>
+          </td>
+        </tr>
+      </template>
+    </tbody>
+  </table>
+
+  <script type="application/json" id="prompt-data">{{ prompts_json|safe }}</script>
+</div>
+
+<!-- Recent snapshots -->
+<div class="mt-5 card overflow-hidden">
+  <div class="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+    <h2 class="text-sm font-semibold text-slate-900">Recent snapshots</h2>
+    <span class="htmx-indicator spinner"></span>
+  </div>
+  <div id="snapshots-list"
+       hx-get="/projects/{{ project.id }}/snapshots/partial"
+       hx-trigger="every 15s"
+       hx-swap="innerHTML">
+    {% include "_snapshots.html" %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const host = document.querySelector('[data-project-id]');
+    if (host) Lumora.initCharts(host.dataset.projectId);
+  });
+</script>
+{% endblock %}

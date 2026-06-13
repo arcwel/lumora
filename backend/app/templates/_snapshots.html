@@ -1,0 +1,34 @@
+{% if just_triggered is defined and just_triggered %}
+<div class="fade-in mx-6 mt-4 flex items-center gap-2 rounded-lg bg-accent-50 px-3 py-2 text-xs font-medium text-accent-700">
+  <span class="spinner"></span>
+  Snapshot started — results will appear here as it runs.
+</div>
+{% endif %}
+
+{% if snapshots %}
+<ul class="divide-y divide-slate-50">
+  {% for run in snapshots %}
+  {% set s = run.status.value if run.status.value is defined else run.status %}
+  <li class="fade-in flex items-center justify-between px-6 py-4">
+    <div class="flex items-center gap-3">
+      <span class="badge badge-{{ s }}"><span class="badge-dot"></span>{{ s|capitalize }}</span>
+      <div>
+        <p class="text-sm font-medium text-slate-800">Run #{{ run.id }}</p>
+        <p class="text-xs text-slate-400">
+          {{ run.started_at|dt }} · {{ run.n_answers }} answer{{ '' if run.n_answers == 1 else 's' }} · {{ run.n_runs }} pass{{ '' if run.n_runs == 1 else 'es' }}
+        </p>
+      </div>
+    </div>
+    <div class="text-right">
+      <p class="tnum text-sm font-semibold text-slate-900">{{ run.mention_rate|pct }}</p>
+      <p class="text-xs text-slate-400">{{ run.completed_at|ago if run.completed_at else '—' }}</p>
+    </div>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<div class="px-6 py-12 text-center">
+  <p class="text-sm text-slate-400">No snapshots yet.</p>
+  <p class="mt-1 text-xs text-slate-300">Run one to capture how AI assistants answer your prompts.</p>
+</div>
+{% endif %}

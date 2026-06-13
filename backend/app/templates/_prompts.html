@@ -1,0 +1,28 @@
+{% if prompts %}
+<ul class="divide-y divide-slate-50">
+  {% for p in prompts %}
+  <li class="fade-in flex items-center justify-between gap-4 px-6 py-3.5">
+    <div class="min-w-0">
+      <p class="truncate text-sm font-medium text-slate-800" title="{{ p.text }}">{{ p.text }}</p>
+      <p class="mt-0.5 text-xs text-slate-400">{{ p.category or 'Uncategorized' }}</p>
+    </div>
+    <div class="flex shrink-0 items-center gap-3">
+      {% if p.is_active %}
+        <span class="badge badge-completed"><span class="badge-dot"></span>Active</span>
+      {% else %}
+        <span class="badge badge-pending"><span class="badge-dot"></span>Inactive</span>
+      {% endif %}
+      <button
+        hx-post="/projects/{{ project_id }}/prompts/{{ p.id }}/toggle"
+        hx-target="#prompt-list"
+        hx-swap="innerHTML"
+        class="text-xs font-medium text-slate-400 hover:text-accent-600">
+        {{ 'Disable' if p.is_active else 'Enable' }}
+      </button>
+    </div>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<div class="px-6 py-10 text-center text-sm text-slate-400">No prompts yet — add your first one above.</div>
+{% endif %}
