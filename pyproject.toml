@@ -23,6 +23,7 @@ dependencies = [
     "pydantic>=2.7,<3.0",
     "pydantic-settings>=2.3,<3.0",
     "APScheduler>=3.10,<4.0",
+    "click>=8.1,<9.0",
     "openai>=1.40",
     "anthropic>=0.34",
     "google-genai>=0.3",
@@ -36,6 +37,9 @@ dev = [
     "ruff>=0.5",
     "mypy>=1.10",
 ]
+
+[project.scripts]
+lumora = "app.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/arcwel/lumora"
@@ -60,3 +64,7 @@ select = ["E", "F", "I", "UP", "B"]
 python_version = "3.11"
 warn_unused_ignores = true
 ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["backend/tests"]

@@ -48,6 +48,25 @@ class Settings(BaseSettings):
     default_provider_model: str = "gpt-4o-mini"
     default_judge_model: str = "claude-haiku-4-5-20251001"
 
+    # --- Snapshot capture --------------------------------------------------
+    # Models queried on every snapshot, one per provider, as a comma-separated
+    # list. Providers without a configured API key are skipped at run time.
+    snapshot_models: str = "gpt-4o-mini,claude-haiku-4-5-20251001,gemini-2.0-flash"
+    # Variance passes per prompt per provider. AI answers are non-deterministic,
+    # so each prompt is asked N times and mention rate is reported as a fraction.
+    runs_per_prompt: int = 3
+
+    @property
+    def snapshot_model_list(self) -> list[str]:
+        """Parsed, de-duplicated list of snapshot capture models."""
+
+        seen: list[str] = []
+        for raw in self.snapshot_models.split(","):
+            model = raw.strip()
+            if model and model not in seen:
+                seen.append(model)
+        return seen
+
 
 @lru_cache
 def get_settings() -> Settings:

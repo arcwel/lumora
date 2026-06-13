@@ -30,6 +30,10 @@ class Project(TimestampMixin, Base):
     monthly_token_budget: Mapped[int | None] = mapped_column(Integer, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
+    # Optional 5-field cron expression (e.g. "0 9 * * 1" = Mondays at 09:00).
+    # When set on an active project, the scheduler registers a recurring run.
+    cron_schedule: Mapped[str | None] = mapped_column(String(128), nullable=True)
+
     prompts: Mapped[list["Prompt"]] = relationship(
         back_populates="project",
         cascade="all, delete-orphan",

@@ -6,7 +6,7 @@ import enum
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String
+from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base, TimestampMixin
@@ -46,10 +46,16 @@ class SnapshotRun(TimestampMixin, Base):
         nullable=False,
     )
 
-    # Provenance: which models produced and judged this run.
-    provider_model: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    # Provenance: which models produced and judged this run. ``provider_model``
+    # holds a comma-separated list when a run spans multiple providers.
+    provider_model: Mapped[str | None] = mapped_column(String(512), nullable=True)
     judge_model: Mapped[str | None] = mapped_column(String(128), nullable=True)
     judge_prompt_version: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+    # Number of variance passes executed per prompt per provider (N=3 default).
+    n_runs: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    # Failure detail when ``status`` is FAILED; null otherwise.
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     project: Mapped["Project"] = relationship(back_populates="snapshot_runs")
     answers: Mapped[list["Answer"]] = relationship(

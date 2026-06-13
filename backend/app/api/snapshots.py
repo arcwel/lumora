@@ -28,6 +28,8 @@ class SnapshotRead(BaseModel):
     provider_model: str | None
     judge_model: str | None
     judge_prompt_version: str | None
+    n_runs: int
+    error: str | None
 
     model_config = {"from_attributes": True}
 

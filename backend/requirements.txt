@@ -15,7 +15,10 @@ pydantic-settings>=2.3,<3.0
 # --- Scheduling ---
 APScheduler>=3.10,<4.0
 
-# --- LLM provider SDKs (wired into providers/* when going live) ---
+# --- CLI ---
+click>=8.1,<9.0
+
+# --- LLM provider SDKs ---
 openai>=1.40
 anthropic>=0.34
 google-genai>=0.3

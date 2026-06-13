@@ -37,6 +37,9 @@ class Answer(TimestampMixin, Base):
     raw_response: Mapped[str] = mapped_column(Text, nullable=False)
     token_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
+    # 1-based index of the variance pass this answer came from (N=3 runs).
+    run_index: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+
     snapshot_run: Mapped["SnapshotRun"] = relationship(back_populates="answers")
     prompt: Mapped["Prompt"] = relationship(back_populates="answers")
     score: Mapped["Score | None"] = relationship(
