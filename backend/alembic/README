@@ -1,0 +1,14 @@
+Alembic migrations for Lumora.
+
+The database URL and target metadata are sourced from the application at runtime
+(see env.py), so you do not set sqlalchemy.url in alembic.ini.
+
+Run from the backend/ directory:
+
+  # generate a migration from model changes
+  alembic revision --autogenerate -m "describe change"
+
+  # apply migrations
+  alembic upgrade head
+
+For the SQLite MVP, batch mode is enabled automatically so ALTER operations work.

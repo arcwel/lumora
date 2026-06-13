@@ -1,0 +1,40 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+.python-version
+
+# --- Environment / secrets ---
+.env
+*.env
+!.env.example
+
+# --- Databases ---
+*.db
+*.sqlite
+*.sqlite3
+lumora.db
+
+# --- Tooling caches ---
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# --- Node / frontend ---
+node_modules/
+frontend/dist/
+frontend/build/
+.DS_Store
+
+# --- Editors ---
+.idea/
+.vscode/
+*.swp

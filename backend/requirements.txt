@@ -1,0 +1,24 @@
+# --- Web framework ---
+fastapi>=0.115,<1.0
+uvicorn[standard]>=0.30,<1.0
+
+# --- Database / ORM ---
+SQLAlchemy>=2.0,<2.1
+alembic>=1.13,<2.0
+# Postgres driver (production); harmless to install for the SQLite MVP.
+psycopg[binary]>=3.1,<4.0
+
+# --- Settings / validation ---
+pydantic>=2.7,<3.0
+pydantic-settings>=2.3,<3.0
+
+# --- Scheduling ---
+APScheduler>=3.10,<4.0
+
+# --- LLM provider SDKs (wired into providers/* when going live) ---
+openai>=1.40
+anthropic>=0.34
+google-genai>=0.3
+
+# --- HTTP client (provider adapters) ---
+httpx>=0.27

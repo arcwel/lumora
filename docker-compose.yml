@@ -1,0 +1,42 @@
+# Production-oriented Compose stack: FastAPI app + Postgres.
+# For local MVP development you can skip Postgres and use the default SQLite DB.
+
+services:
+  app:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      # Override the SQLite default with the Postgres service.
+      DATABASE_URL: postgresql+psycopg://lumora:lumora@db:5432/lumora
+      ENVIRONMENT: production
+      DEBUG: "false"
+      # Provider keys are read from your shell / .env at compose time.
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      PERPLEXITY_API_KEY: ${PERPLEXITY_API_KEY:-}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: lumora
+      POSTGRES_PASSWORD: lumora
+      POSTGRES_DB: lumora
+    volumes:
+      - lumora_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lumora -d lumora"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  lumora_pgdata:
