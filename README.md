@@ -23,14 +23,15 @@ GEO/AEO (Generative / Answer Engine Optimization) services for their clients.
 
 ## Tech stack
 
-| Layer      | Choice                                            |
-| ---------- | ------------------------------------------------- |
-| Backend    | Python + FastAPI                                  |
-| ORM / DB   | SQLAlchemy 2.0 · SQLite (MVP) / Postgres (prod)   |
-| Scheduling | APScheduler (cron-style runs)                     |
-| Migrations | Alembic                                           |
-| Frontend   | React + Recharts (placeholder for now)            |
-| Deploy     | Docker Compose (app + Postgres)                   |
+| Layer      | Choice                                              |
+| ---------- | --------------------------------------------------- |
+| Backend    | Python + FastAPI                                    |
+| ORM / DB   | SQLAlchemy 2.0 · Postgres (primary) / SQLite (fallback) |
+| Driver     | psycopg 3 (`postgresql+psycopg://…`)                |
+| Scheduling | APScheduler (cron-style runs)                       |
+| Migrations | Alembic (auto-applied on startup)                   |
+| Frontend   | React + Recharts (placeholder for now)              |
+| Deploy     | Docker Compose **or** bare metal / VPS (systemd)    |
 
 ## Project layout
 
@@ -51,21 +52,31 @@ lumora/
 │   │   └── api/             # projects, prompts, snapshots, CSV export
 │   ├── alembic/             # Migrations
 │   ├── requirements.txt
+│   ├── docker-entrypoint.sh # Runs `alembic upgrade head`, then the CMD
 │   └── Dockerfile
+├── deploy/                  # Bare-metal / VPS: systemd unit + install script
+│   ├── install.sh
+│   └── lumora.service
 ├── frontend/                # React + Recharts (placeholder)
-├── docker-compose.yml       # app + Postgres (production)
+├── docker-compose.yml       # app + Postgres 16 (production)
 ├── .env.example
 └── pyproject.toml
 ```
 
-## Quick start (MVP / SQLite)
+## Quick start (local dev / SQLite)
+
+The fastest way to kick the tyres — no database server required. SQLite is the
+zero-infra fallback; set `DATABASE_URL` to a `sqlite://` path (or leave it unset
+entirely) and the app creates the schema for you on startup.
 
 ```bash
 cd backend
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
-cp ../.env.example ../.env   # then fill in your API keys
+cp ../.env.example ../.env                 # then fill in your API keys
+# .env.example defaults to Postgres — for the SQLite quick start, set:
+#   DATABASE_URL=sqlite:///./lumora.db
 
 uvicorn app.main:app --reload
 ```
@@ -73,13 +84,13 @@ uvicorn app.main:app --reload
 - Health check: <http://localhost:8000/health>
 - Interactive API docs: <http://localhost:8000/docs>
 
-The database tables are created automatically on startup for the SQLite MVP. For
-Postgres, use Alembic:
+On a SQLite database the tables are created automatically on startup. On
+Postgres the schema is owned by **Alembic** — run `alembic upgrade head` (the
+Docker and systemd deployment paths below do this for you on every boot):
 
 ```bash
 cd backend
-alembic revision --autogenerate -m "initial schema"
-alembic upgrade head
+alembic upgrade head        # migrations already live in alembic/versions/
 ```
 
 ## Command-line interface
@@ -111,21 +122,103 @@ reports per-(prompt, model) mention rates. Cron schedules set via `lumora
 schedule` are stored on the project and registered automatically whenever the
 app's in-process scheduler starts.
 
-## Production (Docker Compose + Postgres)
+## Deployment
+
+Lumora ships two production paths. **Both** auto-run Alembic migrations on
+startup, run the in-process APScheduler (so cron jobs fire while the service is
+up), and expose the same `lumora` CLI alongside the web server.
+
+### Option A — Docker Compose (app + Postgres 16)
+
+One command brings up the FastAPI app and a Postgres 16 database with health
+checks on both containers:
 
 ```bash
-# provider keys are read from your shell environment / .env
+cp .env.example .env       # add your provider API keys (DATABASE_URL is
+                           # overridden to the bundled Postgres by compose)
 docker compose up --build
 ```
 
-This brings up the FastAPI app against a Postgres database.
+- The app container's entrypoint (`backend/docker-entrypoint.sh`) waits for
+  Postgres, runs `alembic upgrade head`, then starts uvicorn — so the schema is
+  created/migrated automatically.
+- Health checks: Postgres uses `pg_isready`; the app polls `/health`. The app
+  only starts once the database reports healthy (`depends_on: service_healthy`).
+- `.env` is optional at boot (compose marks it `required: false`), so a bare
+  `docker compose up` works out of the box — though providers without a key are
+  skipped at run time.
+
+Run **CLI** commands against the same stack:
+
+```bash
+docker compose run --rm app lumora project create --name "Acme" --brand "Acme"
+docker compose run --rm app lumora run --all
+docker compose run --rm app lumora status --project-id 1
+```
+
+### Option B — Bare metal / VPS (systemd)
+
+Install into a virtualenv, point at your Postgres server, and run under systemd.
+
+```bash
+# 1. Clone to /opt/lumora (or anywhere; adjust paths in the unit file to match)
+git clone https://github.com/arcwel/lumora.git /opt/lumora
+cd /opt/lumora
+
+# 2. Create the venv, install deps + the `lumora` CLI, seed .env, migrate.
+#    Edit .env afterwards: set DATABASE_URL to your Postgres DSN and API keys.
+./deploy/install.sh
+
+# 3. Install and start the daemon
+sudo cp deploy/lumora.service /etc/systemd/system/lumora.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now lumora
+journalctl -u lumora -f       # follow logs
+```
+
+What the unit does (`deploy/lumora.service`):
+
+- `ExecStartPre` runs `alembic upgrade head` — **auto-migrate on every start**.
+- `ExecStart` runs gunicorn with a **single** UvicornWorker. APScheduler runs
+  in-process, so a single worker avoids duplicate cron registrations; scale
+  request throughput with a reverse proxy / more hosts rather than more workers.
+- `EnvironmentFile=/opt/lumora/.env` supplies `DATABASE_URL` and provider keys.
+
+Manual run without systemd (also valid):
+
+```bash
+cd /opt/lumora/backend
+../.venv/bin/alembic upgrade head
+../.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+The `lumora` CLI is on PATH inside the venv (`/opt/lumora/.venv/bin/lumora`) and
+shares the same database, so you can script snapshots and exports from cron, SSH,
+or CI independently of the web process.
+
+### Database configuration
+
+`DATABASE_URL` selects the backend (psycopg 3 driver for Postgres):
+
+| Backend  | `DATABASE_URL`                                            | Schema management        |
+| -------- | -------------------------------------------------------- | ------------------------ |
+| Postgres | `postgresql+psycopg://user:pass@host:5432/lumora`        | Alembic (`upgrade head`) |
+| SQLite   | `sqlite:///./lumora.db` (or unset → automatic fallback)  | `create_all` on startup  |
+
+The models are backend-agnostic (`JSON` columns, string-backed enums, timezone-
+aware timestamps), so the same migrations apply cleanly to both.
 
 ## Status
 
-Phase 1 is complete (Tasks 1–6): project structure, data models, API skeleton,
+Phase 1 (Tasks 1–6) delivered the project structure, data models, API skeleton,
 **live provider adapters** (OpenAI, Anthropic, Gemini via the `google-genai`
 SDK), the **LLM-as-judge scoring pipeline**, the **scheduled snapshot runner**,
 and the **`lumora` CLI**.
+
+Since then: **Postgres is the primary database** (psycopg 3, Alembic-managed,
+with the SQLite fallback retained), and Lumora ships **two deployment paths** —
+Docker Compose and bare metal / VPS via systemd — both auto-migrating on startup
+and exposing the CLI alongside the web server (Tasks 8 & 12).
 
 The runner executes each prompt across **all** configured providers and repeats
 it `N` times (default 3) per snapshot, tagging every answer with its provider,

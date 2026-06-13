@@ -1,8 +1,10 @@
 """Application settings loaded from environment variables / .env file.
 
 Uses pydantic-settings so values can come from the process environment or a
-local ``.env`` file (see ``.env.example``). Defaults are tuned for the SQLite
-MVP; production deployments override ``DATABASE_URL`` with a Postgres DSN.
+local ``.env`` file (see ``.env.example``). Postgres is the primary database
+(``.env.example`` ships a Postgres DSN); if ``DATABASE_URL`` is left unset the
+app falls back to a local SQLite file so the CLI and quick local dev work with
+zero infrastructure.
 """
 
 from __future__ import annotations
@@ -27,8 +29,9 @@ class Settings(BaseSettings):
     debug: bool = True
 
     # --- Database ----------------------------------------------------------
-    # SQLite for the MVP; swap for a Postgres DSN in production, e.g.
-    # postgresql+psycopg://user:pass@db:5432/lumora
+    # Postgres is the primary backend (set DATABASE_URL via .env, e.g.
+    # postgresql+psycopg://user:pass@db:5432/lumora). When DATABASE_URL is
+    # unset we fall back to a local SQLite file for CLI / quick local dev.
     database_url: str = "sqlite:///./lumora.db"
 
     # --- Scheduler ---------------------------------------------------------

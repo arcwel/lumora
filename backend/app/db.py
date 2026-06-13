@@ -17,13 +17,21 @@ from sqlalchemy.orm import (
 from app.config import settings
 
 
+def is_sqlite(database_url: str | None = None) -> bool:
+    """Return True when the configured database is SQLite (the fallback backend)."""
+
+    return (database_url or settings.database_url).startswith("sqlite")
+
+
 def _engine_kwargs(database_url: str) -> dict:
     """Return engine kwargs appropriate for the configured backend."""
 
     # SQLite needs ``check_same_thread=False`` so the APScheduler thread and
     # the FastAPI request threads can share connections.
-    if database_url.startswith("sqlite"):
+    if is_sqlite(database_url):
         return {"connect_args": {"check_same_thread": False}}
+    # Postgres (psycopg): pre-ping recycles connections dropped by the server
+    # so the long-lived scheduler process survives idle periods / restarts.
     return {"pool_pre_ping": True}
 
 
@@ -57,7 +65,12 @@ class TimestampMixin:
 
 
 def init_db() -> None:
-    """Create all tables. Used for the SQLite MVP; production uses Alembic."""
+    """Create all tables directly via ``create_all``.
+
+    Used for the SQLite fallback (and the test suite). Postgres deployments
+    manage their schema with Alembic (``alembic upgrade head``) instead — see
+    ``app.main`` and the deployment entrypoints.
+    """
 
     # Import models so they register with ``Base.metadata`` before create_all.
     from app import models  # noqa: F401

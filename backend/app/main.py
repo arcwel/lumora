@@ -11,7 +11,7 @@ from fastapi import FastAPI
 from app import __version__
 from app.api import api_router
 from app.config import settings
-from app.db import init_db
+from app.db import init_db, is_sqlite
 from app.scheduler.runner import shutdown_scheduler, start_scheduler
 
 logging.basicConfig(level=logging.INFO)
@@ -23,7 +23,15 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Initialize the database and scheduler on startup; clean up on shutdown."""
 
     logger.info("Starting %s v%s (%s)", settings.app_name, __version__, settings.environment)
-    init_db()
+    # SQLite (fallback / local dev) has no migration tooling wired up, so create
+    # the schema directly on startup. Postgres deployments own their schema via
+    # Alembic — the Docker entrypoint and systemd unit run ``alembic upgrade
+    # head`` before the app boots, so we must not race them with create_all.
+    if is_sqlite():
+        init_db()
+        logger.info("SQLite backend detected — ensured schema via create_all")
+    else:
+        logger.info("Non-SQLite backend — schema managed by Alembic (alembic upgrade head)")
     start_scheduler()
     try:
         yield

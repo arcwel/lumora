@@ -1,6 +1,9 @@
 # --- Web framework ---
 fastapi>=0.115,<1.0
 uvicorn[standard]>=0.30,<1.0
+# Production process manager for the bare-metal / systemd path (run with a
+# single UvicornWorker — see deploy/lumora.service for the scheduler caveat).
+gunicorn>=21.2,<24.0
 
 # --- Database / ORM ---
 SQLAlchemy>=2.0,<2.1

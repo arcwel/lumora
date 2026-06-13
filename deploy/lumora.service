@@ -1,0 +1,47 @@
+# systemd unit for running Lumora as a daemon on a bare-metal / VPS host.
+#
+# Install (see deploy/install.sh and the README for the full walkthrough):
+#   sudo cp deploy/lumora.service /etc/systemd/system/lumora.service
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now lumora
+#   journalctl -u lumora -f          # follow logs
+#
+# Assumes the repo is checked out at /opt/lumora with a virtualenv at
+# /opt/lumora/.venv and a populated /opt/lumora/.env. Adjust paths/User to taste.
+
+[Unit]
+Description=Lumora — self-hosted AI visibility tracker
+After=network-online.target postgresql.service
+Wants=network-online.target
+# If Postgres runs on this host, uncomment to order startup after it:
+# Requires=postgresql.service
+
+[Service]
+Type=simple
+User=lumora
+Group=lumora
+
+# WorkingDirectory must be backend/ so Alembic finds alembic.ini and alembic/.
+WorkingDirectory=/opt/lumora/backend
+
+# EnvironmentFile injects DATABASE_URL, provider keys, etc. into the process
+# environment (takes precedence over the .env file discovery in config.py).
+EnvironmentFile=/opt/lumora/.env
+
+# Bring the schema up to date before the server starts (auto-migrate on boot).
+ExecStartPre=/opt/lumora/.venv/bin/alembic upgrade head
+
+# Gunicorn with a SINGLE UvicornWorker. APScheduler runs in-process, so more
+# than one worker would register duplicate cron jobs and fire snapshots N times.
+# Scale request throughput with a reverse proxy / multiple hosts, not workers.
+ExecStart=/opt/lumora/.venv/bin/gunicorn app.main:app \
+    --workers 1 \
+    --worker-class uvicorn.workers.UvicornWorker \
+    --bind 0.0.0.0:8000 \
+    --timeout 120
+
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

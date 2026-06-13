@@ -1,27 +1,49 @@
-# Production-oriented Compose stack: FastAPI app + Postgres.
-# For local MVP development you can skip Postgres and use the default SQLite DB.
+# Production Compose stack: FastAPI app + Postgres 16.
+#
+# One-command start (provider keys and any overrides come from ./.env — copy
+# .env.example to .env first):
+#
+#     docker compose up --build
+#
+# The app container runs `alembic upgrade head` on startup (see
+# backend/docker-entrypoint.sh), so the schema is created/migrated automatically.
+#
+# Run CLI commands against the same stack, e.g.:
+#
+#     docker compose run --rm app lumora project list
+#     docker compose run --rm app lumora run --all
 
 services:
   app:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      # Repo root context so pyproject.toml is available for the package install.
+      context: .
+      dockerfile: backend/Dockerfile
     restart: unless-stopped
     ports:
       - "8000:8000"
+    # Load provider API keys and any overrides from .env if present. Marked
+    # optional so `docker compose up` still works before you create one.
+    env_file:
+      - path: .env
+        required: false
     environment:
-      # Override the SQLite default with the Postgres service.
+      # Point at the bundled Postgres service; overrides whatever .env sets.
       DATABASE_URL: postgresql+psycopg://lumora:lumora@db:5432/lumora
       ENVIRONMENT: production
       DEBUG: "false"
-      # Provider keys are read from your shell / .env at compose time.
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
-      PERPLEXITY_API_KEY: ${PERPLEXITY_API_KEY:-}
     depends_on:
       db:
         condition: service_healthy
+    healthcheck:
+      # python is always present in the image (no curl/wget in slim).
+      test:
+        - "CMD-SHELL"
+        - "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health').status==200 else 1)\""
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   db:
     image: postgres:16-alpine
