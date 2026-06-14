@@ -24,6 +24,7 @@ from apscheduler.triggers.cron import CronTrigger
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.alerting import dispatch_alert
 from app.budget import is_budget_exhausted
 from app.config import settings
 from app.db import SessionLocal
@@ -114,6 +115,16 @@ def run_snapshot_for_project(
         run.completed_at = datetime.now(timezone.utc)
         session.commit()
         emit(f"Snapshot run #{run.id} completed: {answered} answers, {scored} scored.")
+
+        # Threshold alerting is best-effort: a failure here must never fail an
+        # otherwise-successful snapshot, so swallow and log any exception.
+        try:
+            dispatch = dispatch_alert(session, project.id, run.id)
+            if dispatch.triggered and dispatch.sent:
+                emit(f"  alert sent via {', '.join(dispatch.sent)}")
+        except Exception:  # pragma: no cover - defensive; alerting is non-critical
+            logger.exception("Alert dispatch failed for run %s", run.id)
+
         return run.id
     except Exception as exc:
         session.rollback()

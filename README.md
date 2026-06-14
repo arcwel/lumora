@@ -46,6 +46,7 @@ lumora/
 │   │   ├── providers/       # OpenAI / Anthropic / Gemini adapters
 │   │   ├── judge/           # LLM-as-judge scorer + pinned rubric
 │   │   ├── scheduler/       # APScheduler config + snapshot job (N runs, cron)
+│   │   ├── alerting/        # Threshold checker + Slack/email/Telegram senders
 │   │   ├── aggregate.py     # Mention-rate aggregation across N runs
 │   │   ├── exporter.py      # CSV export (one row per answer)
 │   │   ├── cli.py           # `lumora` command-line interface
@@ -121,6 +122,50 @@ key configured, asking each prompt `RUNS_PER_PROMPT` times. `lumora status` then
 reports per-(prompt, model) mention rates. Cron schedules set via `lumora
 schedule` are stored on the project and registered automatically whenever the
 app's in-process scheduler starts.
+
+## Alerting
+
+After every snapshot run completes, Lumora compares the project's new overall
+mention rate against the **previous completed run**. When the rate moves by at
+least `ALERT_THRESHOLD` (a fraction — `0.10` = 10 percentage points) it fires an
+alert. Both directions are reported: 📈 for a rise (good news) and 📉 for a drop.
+The first run of a project has no baseline, so it never alerts.
+
+Each message includes the project/brand, the old → new rate with the
+percentage-point delta, the prompts that moved the most, a timestamp, and — when
+`BASE_URL` is set — a deep link to the project's dashboard.
+
+Three channels are supported, and **all are optional**: a channel is used only
+when its environment variables are set, and skipped silently otherwise. A
+failure in one channel is logged and never breaks the snapshot run or the other
+channels.
+
+| Channel | Required env vars |
+| --- | --- |
+| **Slack** | `SLACK_WEBHOOK_URL` (an [incoming webhook](https://api.slack.com/messaging/webhooks)) |
+| **Email** | `SMTP_HOST`, `ALERT_EMAIL_FROM`, `ALERT_EMAIL_TO` (plus optional `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_USE_TLS`) |
+| **Telegram** | `TELEGRAM_BOT_TOKEN` (from [@BotFather](https://t.me/BotFather)) and `TELEGRAM_CHAT_ID` |
+
+```bash
+# .env — tune the trigger and enable whichever channels you want
+ALERT_THRESHOLD=0.10
+BASE_URL=https://lumora.example.com
+
+SLACK_WEBHOOK_URL=https://hooks.slack.com/services/T000/B000/XXXX
+
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_USER=alerts@example.com
+SMTP_PASSWORD=app-password
+ALERT_EMAIL_FROM=alerts@example.com
+ALERT_EMAIL_TO=team@example.com
+
+TELEGRAM_BOT_TOKEN=123456:ABC-DEF...
+TELEGRAM_CHAT_ID=-1001234567890
+```
+
+See [`.env.example`](.env.example) for the full annotated list. Slack and
+Telegram use `httpx`; email uses the stdlib `smtplib`.
 
 ## Deployment
 
@@ -226,6 +271,9 @@ model, and `run_index` so visibility reads as a mention rate. Runs walk a
 `pending → running → completed/failed` lifecycle with timestamps, respect each
 project's monthly token budget, and can be triggered on demand (`lumora run`, the
 API, or `BackgroundTasks`) or on a per-project **cron schedule** via APScheduler.
+Each completed run also feeds the **threshold alerting** pipeline (Task 11),
+notifying Slack, email, and/or Telegram when a project's mention rate shifts past
+`ALERT_THRESHOLD` — see [Alerting](#alerting).
 
 Smoke-test the providers (skips any without a key configured)::
 
