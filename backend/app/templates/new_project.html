@@ -1,44 +1,46 @@
 {% extends "base.html" %}
 {% block title %}New project · Lumora{% endblock %}
+{% block section_label %}New Project{% endblock %}
 
 {% block content %}
-<div class="mb-6">
-  <a href="/" class="text-xs font-medium text-slate-400 hover:text-slate-600">← Dashboard</a>
+<div class="page-heading">
+  <div class="page-heading-row">
+    <div>
+      <h1>New project</h1>
+      <p>Track how AI assistants mention a brand over time.</p>
+    </div>
+    <div class="page-heading-actions">
+      <a href="/" class="btn btn-ghost btn-sm">&larr; Dashboard</a>
+    </div>
+  </div>
 </div>
 
-<div class="mx-auto max-w-xl">
-  <h1 class="text-2xl font-semibold tracking-tight text-slate-900">New project</h1>
-  <p class="mt-1 text-sm text-slate-500">Track how AI assistants mention a brand over time.</p>
-
-  <form method="post" action="/projects/new" class="card mt-6 space-y-5 p-6">
-    <div>
-      <label class="block text-sm font-medium text-slate-700">Project name</label>
-      <input name="name" required placeholder="Acme — AI Visibility"
-             class="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-accent-500 focus:outline-none focus:ring-2 focus:ring-accent-100" />
-      <p class="mt-1 text-xs text-slate-400">An internal label for this workspace.</p>
+<div style="max-width:560px; margin:28px auto 0;">
+  <form method="post" action="/projects/new" class="card" style="display:flex; flex-direction:column; gap:0;">
+    <div class="form-group">
+      <label class="form-label">Project name</label>
+      <input name="name" required placeholder="Acme — AI Visibility" class="form-input" />
+      <div class="form-hint">An internal label for this workspace.</div>
     </div>
-    <div>
-      <label class="block text-sm font-medium text-slate-700">Brand name</label>
-      <input name="brand_name" required placeholder="Acme"
-             class="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-accent-500 focus:outline-none focus:ring-2 focus:ring-accent-100" />
-      <p class="mt-1 text-xs text-slate-400">The exact brand we look for in answers.</p>
+    <div class="form-group">
+      <label class="form-label">Brand name</label>
+      <input name="brand_name" required placeholder="Acme" class="form-input" />
+      <div class="form-hint">The exact brand we look for in answers.</div>
     </div>
-    <div>
-      <label class="block text-sm font-medium text-slate-700">Aliases</label>
-      <input name="aliases" placeholder="AcmeCo, Acme Inc"
-             class="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-accent-500 focus:outline-none focus:ring-2 focus:ring-accent-100" />
-      <p class="mt-1 text-xs text-slate-400">Comma-separated alternative spellings.</p>
+    <div class="form-group">
+      <label class="form-label">Aliases</label>
+      <input name="aliases" placeholder="AcmeCo, Acme Inc" class="form-input" />
+      <div class="form-hint">Comma-separated alternative spellings.</div>
     </div>
-    <div>
-      <label class="block text-sm font-medium text-slate-700">Competitors</label>
-      <input name="competitors" placeholder="Globex, Initech"
-             class="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-accent-500 focus:outline-none focus:ring-2 focus:ring-accent-100" />
-      <p class="mt-1 text-xs text-slate-400">Comma-separated, for context.</p>
+    <div class="form-group">
+      <label class="form-label">Competitors</label>
+      <input name="competitors" placeholder="Globex, Initech" class="form-input" />
+      <div class="form-hint">Comma-separated, for context.</div>
     </div>
 
-    <div class="flex items-center justify-end gap-3 border-t border-slate-100 pt-4">
-      <a href="/" class="rounded-lg px-3.5 py-2 text-sm font-medium text-slate-500 hover:text-slate-700">Cancel</a>
-      <button type="submit" class="rounded-lg bg-accent-600 px-4 py-2 text-sm font-medium text-white hover:bg-accent-700">Create project</button>
+    <div style="display:flex; align-items:center; justify-content:flex-end; gap:12px; padding-top:16px; margin-top:8px; border-top:1px solid oklch(25% 0.03 var(--c-surface-hue) / 0.5);">
+      <a href="/" class="btn btn-ghost btn-sm">Cancel</a>
+      <button type="submit" class="btn btn-primary btn-sm">Create project</button>
     </div>
   </form>
 </div>

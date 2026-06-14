@@ -1,27 +1,31 @@
 {% extends "base.html" %}
 {% block title %}Dashboard · Lumora{% endblock %}
+{% block section_label %}Dashboard{% endblock %}
 
 {% block content %}
-<div class="mb-8 flex flex-wrap items-end justify-between gap-4">
-  <div>
-    <h1 class="text-2xl font-semibold tracking-tight text-slate-900">Dashboard</h1>
-    <p class="mt-1 text-sm text-slate-500">How your brands show up across AI assistants.</p>
+<div class="page-heading">
+  <div class="page-heading-row">
+    <div>
+      <h1>Dashboard</h1>
+      <p>How your brands show up across AI assistants.</p>
+    </div>
+    <div class="page-heading-actions">
+      <a href="/projects/new" class="btn btn-primary btn-sm">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        New project
+      </a>
+    </div>
   </div>
-  <a href="/projects/new"
-     class="inline-flex items-center gap-1.5 rounded-lg bg-accent-600 px-3.5 py-2 text-sm font-medium text-white shadow-sm hover:bg-accent-700">
-    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>
-    New project
-  </a>
 </div>
 
 {% if projects %}
-<div class="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+<div class="project-grid">
   {% for p in projects %}
-  <a href="/projects/{{ p.id }}/view" class="card group flex flex-col p-5">
-    <div class="flex items-start justify-between">
-      <div class="min-w-0">
-        <h2 class="truncate text-[15px] font-semibold text-slate-900">{{ p.brand_name }}</h2>
-        <p class="mt-0.5 truncate text-xs text-slate-400">{{ p.name }}</p>
+  <a href="/projects/{{ p.id }}/view" class="project-card">
+    <div class="project-card-head">
+      <div>
+        <div class="project-card-name">{{ p.brand_name }}</div>
+        <div class="project-card-desc">{{ p.name }}</div>
       </div>
       {% if p.latest_status %}
         {% set s = p.latest_status.value if p.latest_status.value is defined else p.latest_status %}
@@ -31,16 +35,14 @@
       {% endif %}
     </div>
 
-    <div class="mt-5 flex items-end justify-between">
+    <div class="project-card-metric">
       <div>
-        <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Mention rate</p>
-        <p class="tnum mt-1 text-4xl font-semibold tracking-tight text-slate-900">
-          {{ p.mention_rate|pct }}
-        </p>
+        <div style="font-family:var(--font-mono); font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--muted); margin-bottom:6px;">Mention rate</div>
+        <div class="project-card-rate gradient">{{ p.mention_rate|pct }}</div>
       </div>
       {% if p.sparkline and p.sparkline|length > 1 %}
         {% set mx = p.sparkline|max %}
-        <div class="spark w-24" title="Recent runs">
+        <div class="spark" style="width:80px;" title="Recent runs">
           {% for v in p.sparkline %}
             <span style="height: {{ ((v / mx * 100) if mx and mx > 0 else 4)|round(1) }}%"></span>
           {% endfor %}
@@ -48,7 +50,7 @@
       {% endif %}
     </div>
 
-    <div class="mt-5 flex items-center justify-between border-t border-slate-100 pt-3 text-xs text-slate-400">
+    <div class="project-card-foot">
       <span>{{ p.n_prompts }} prompt{{ '' if p.n_prompts == 1 else 's' }}</span>
       <span>{{ p.latest_run_at|ago }}</span>
     </div>
@@ -56,17 +58,15 @@
   {% endfor %}
 </div>
 {% else %}
-<div class="card flex flex-col items-center justify-center px-6 py-20 text-center">
-  <div class="flex h-12 w-12 items-center justify-center rounded-full bg-accent-50 text-accent-600">
-    <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.5 12 4l9 9.5M5 12v7a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-7"/></svg>
+<div class="card" style="margin-top:26px;">
+  <div class="empty-state">
+    <div class="empty-icon">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13.5 12 4l9 9.5M5 12v7a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-7"/></svg>
+    </div>
+    <h2 class="empty-title">No projects yet</h2>
+    <p class="empty-desc">Create your first project to start tracking how AI assistants mention your brand.</p>
+    <a href="/projects/new" class="btn btn-primary btn-sm" style="margin-top:18px;">Create a project</a>
   </div>
-  <h2 class="mt-4 text-base font-semibold text-slate-900">No projects yet</h2>
-  <p class="mt-1 max-w-sm text-sm text-slate-500">
-    Create your first project to start tracking how AI assistants mention your brand.
-  </p>
-  <a href="/projects/new" class="mt-5 inline-flex items-center gap-1.5 rounded-lg bg-accent-600 px-3.5 py-2 text-sm font-medium text-white hover:bg-accent-700">
-    Create a project
-  </a>
 </div>
 {% endif %}
 {% endblock %}

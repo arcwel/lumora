@@ -1,12 +1,14 @@
 {% if prompts %}
-<ul class="divide-y divide-slate-50">
+<div class="snapshot-list">
   {% for p in prompts %}
-  <li class="fade-in flex items-center justify-between gap-4 px-6 py-3.5">
-    <div class="min-w-0">
-      <p class="truncate text-sm font-medium text-slate-800" title="{{ p.text }}">{{ p.text }}</p>
-      <p class="mt-0.5 text-xs text-slate-400">{{ p.category or 'Uncategorized' }}</p>
+  <div class="snapshot-row fade-in">
+    <div class="snapshot-info" style="flex:1; min-width:0;">
+      <div class="snapshot-detail" style="min-width:0;">
+        <p class="snap-title" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="{{ p.text }}">{{ p.text }}</p>
+        <p class="snap-sub">{{ p.category or 'Uncategorized' }}</p>
+      </div>
     </div>
-    <div class="flex shrink-0 items-center gap-3">
+    <div style="display:flex; align-items:center; gap:12px; flex-shrink:0;">
       {% if p.is_active %}
         <span class="badge badge-completed"><span class="badge-dot"></span>Active</span>
       {% else %}
@@ -16,13 +18,15 @@
         hx-post="/projects/{{ project_id }}/prompts/{{ p.id }}/toggle"
         hx-target="#prompt-list"
         hx-swap="innerHTML"
-        class="text-xs font-medium text-slate-400 hover:text-accent-600">
+        class="btn btn-ghost btn-sm" style="padding:6px 12px; font-size:12px;">
         {{ 'Disable' if p.is_active else 'Enable' }}
       </button>
     </div>
-  </li>
+  </div>
   {% endfor %}
-</ul>
+</div>
 {% else %}
-<div class="px-6 py-10 text-center text-sm text-slate-400">No prompts yet — add your first one above.</div>
+<div class="empty-state" style="padding:32px 20px;">
+  <p class="empty-desc" style="margin:0;">No prompts yet — add your first one above.</p>
+</div>
 {% endif %}

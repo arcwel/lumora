@@ -175,6 +175,25 @@ def project_detail(project_id: int, request: Request, db: Session = Depends(get_
     detail = get_project_detail(project_id, db=db)
     prompts = get_prompt_performance(project_id, db=db)
     snapshots = list_project_snapshots(project_id, limit=8, offset=0, db=db)
+
+    # --- Computed fields for the new design ---
+    total_mentions = sum(p.mentions for p in detail.providers)
+
+    positions = [p.avg_position for p in detail.providers if p.avg_position is not None]
+    avg_position = round(sum(positions) / len(positions), 1) if positions else None
+
+    best_prompt = None
+    if prompts.prompts:
+        scored = [p for p in prompts.prompts if p.mention_rate is not None and p.mention_rate > 0]
+        if scored:
+            best_prompt = max(scored, key=lambda p: p.mention_rate)
+
+    sorted_prompts = sorted(
+        prompts.prompts,
+        key=lambda p: p.mention_rate if p.mention_rate is not None else -1,
+        reverse=True,
+    )
+
     return templates.TemplateResponse(
         request,
         "project_detail.html",
@@ -183,7 +202,10 @@ def project_detail(project_id: int, request: Request, db: Session = Depends(get_
             "nav": "detail",
             "project": detail,
             "prompts": prompts.prompts,
-            # Plain-JSON copy for the client-side sortable table.
+            "sorted_prompts": sorted_prompts,
+            "best_prompt": best_prompt,
+            "total_mentions": total_mentions,
+            "avg_position": avg_position,
             "prompts_json": json.dumps([p.model_dump() for p in prompts.prompts]),
             "prompts_run_at": prompts.run_at,
             "snapshots": snapshots.items,

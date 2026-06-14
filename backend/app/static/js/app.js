@@ -1,21 +1,19 @@
-/* Lumora dashboard — client-side behaviour.
-   Two responsibilities:
-     1. Render the trend + comparison charts (Chart.js) from the JSON API.
-     2. Provide the Alpine `promptTable()` component (client-side sorting).
-   Everything degrades gracefully: if the API is empty, charts show an empty
-   state instead of erroring. */
+/* Lumora dashboard — client-side behaviour (dark aurora theme).
+   1. Render the trend + comparison charts (Chart.js) from the JSON API.
+   2. Provide the Alpine `promptTable()` component (client-side sorting).
+   Everything degrades gracefully. */
 
 (function () {
   "use strict";
 
-  // Muted, professional palette — one hue per provider, assigned stably.
+  /* Aurora-matched palette — one hue per provider, assigned stably. */
   var PALETTE = [
-    "#4f46e5", // indigo
-    "#0d9488", // teal
-    "#d97706", // amber
-    "#db2777", // pink
-    "#2563eb", // blue
-    "#65a30d", // lime
+    "oklch(70% 0.22 250)",   /* primary blue */
+    "oklch(75% 0.20 155)",   /* green */
+    "oklch(80% 0.18 80)",    /* amber */
+    "oklch(72% 0.20 230)",   /* tertiary */
+    "oklch(78% 0.16 215)",   /* secondary */
+    "oklch(70% 0.20 25)",    /* rose */
   ];
 
   function colorFor(index) {
@@ -33,20 +31,21 @@
     return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
   }
 
-  // Shared Chart.js defaults for a clean, restrained look.
+  /* Dark-theme Chart.js defaults */
   function applyDefaults() {
     if (!window.Chart) return;
     Chart.defaults.font.family =
-      "Inter, ui-sans-serif, system-ui, -apple-system, sans-serif";
-    Chart.defaults.font.size = 12;
-    Chart.defaults.color = "#94a3b8"; // slate-400
+      "'JetBrains Mono', ui-monospace, Menlo, monospace";
+    Chart.defaults.font.size = 11;
+    Chart.defaults.color = "oklch(55% 0.025 245)";
     Chart.defaults.plugins.legend.labels.usePointStyle = true;
     Chart.defaults.plugins.legend.labels.boxWidth = 6;
     Chart.defaults.plugins.legend.labels.boxHeight = 6;
     Chart.defaults.plugins.legend.labels.padding = 16;
+    Chart.defaults.plugins.legend.labels.color = "oklch(68% 0.02 245)";
   }
 
-  function show(el) { if (el) el.classList.remove("hidden"); el && (el.style.display = "flex"); }
+  function show(el) { if (el) { el.classList.remove("hidden"); el.style.display = "flex"; } }
 
   function fetchJSON(url) {
     return fetch(url, { headers: { Accept: "application/json" } }).then(function (r) {
@@ -69,13 +68,16 @@
           var c = colorFor(i);
           return {
             label: s.provider,
-            data: s.points, // nulls create clean gaps
+            data: s.points,
             borderColor: c,
             backgroundColor: c,
-            tension: 0.35,
+            tension: 0.4,
             borderWidth: 2,
-            pointRadius: 2,
-            pointHoverRadius: 4,
+            pointRadius: 3,
+            pointHoverRadius: 5,
+            pointBackgroundColor: "oklch(8% 0.025 245)",
+            pointBorderColor: c,
+            pointBorderWidth: 2,
             spanGaps: true,
           };
         });
@@ -91,14 +93,24 @@
                 beginAtZero: true,
                 max: 1,
                 ticks: { callback: fmtPct, stepSize: 0.25 },
-                grid: { color: "#f1f5f9" },
+                grid: { color: "oklch(22% 0.03 245 / 0.5)" },
                 border: { display: false },
               },
-              x: { grid: { display: false }, border: { display: false } },
+              x: {
+                grid: { display: false },
+                border: { display: false },
+              },
             },
             plugins: {
               legend: { position: "bottom" },
               tooltip: {
+                backgroundColor: "oklch(15% 0.035 245 / 0.9)",
+                borderColor: "oklch(28% 0.04 245)",
+                borderWidth: 1,
+                titleColor: "oklch(97% 0.005 245)",
+                bodyColor: "oklch(68% 0.02 245)",
+                cornerRadius: 10,
+                padding: 12,
                 callbacks: {
                   label: function (ctx) {
                     var v = ctx.parsed.y;
@@ -133,7 +145,7 @@
               {
                 data: sorted.map(function (p) { return p.mention_rate; }),
                 backgroundColor: sorted.map(function (_, i) { return colorFor(i); }),
-                borderRadius: 6,
+                borderRadius: 8,
                 maxBarThickness: 48,
               },
             ],
@@ -146,14 +158,24 @@
                 beginAtZero: true,
                 max: 1,
                 ticks: { callback: fmtPct, stepSize: 0.25 },
-                grid: { color: "#f1f5f9" },
+                grid: { color: "oklch(22% 0.03 245 / 0.5)" },
                 border: { display: false },
               },
-              x: { grid: { display: false }, border: { display: false } },
+              x: {
+                grid: { display: false },
+                border: { display: false },
+              },
             },
             plugins: {
               legend: { display: false },
               tooltip: {
+                backgroundColor: "oklch(15% 0.035 245 / 0.9)",
+                borderColor: "oklch(28% 0.04 245)",
+                borderWidth: 1,
+                titleColor: "oklch(97% 0.005 245)",
+                bodyColor: "oklch(68% 0.02 245)",
+                cornerRadius: 10,
+                padding: 12,
                 callbacks: {
                   label: function (ctx) { return fmtPct(ctx.parsed.y); },
                 },
@@ -165,7 +187,7 @@
       .catch(function () { show(document.getElementById("comparisonEmpty")); });
   }
 
-  // Public API used by the project detail template.
+  /* Public API */
   window.Lumora = {
     initCharts: function (projectId) {
       applyDefaults();
@@ -174,7 +196,7 @@
     },
   };
 
-  // Alpine component: sortable prompt-performance table.
+  /* Alpine component: sortable prompt-performance table. */
   window.promptTable = function () {
     return {
       rows: [],
@@ -202,7 +224,6 @@
           var av = a[key];
           var bv = b[key];
           if (key === "mention_rate") {
-            // Null rates (no data) always sort to the bottom.
             av = av == null ? -1 : av;
             bv = bv == null ? -1 : bv;
             return (av - bv) * dir;

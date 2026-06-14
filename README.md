@@ -30,7 +30,7 @@ GEO/AEO (Generative / Answer Engine Optimization) services for their clients.
 | Driver     | psycopg 3 (`postgresql+psycopg://…`)                |
 | Scheduling | APScheduler (cron-style runs)                       |
 | Migrations | Alembic (auto-applied on startup)                   |
-| Frontend   | React + Recharts (placeholder for now)              |
+| Dashboard  | Server-rendered Jinja2 + HTMX + Alpine.js + Chart.js (custom "Dark Aurora" CSS, no build step) |
 | Deploy     | Docker Compose **or** bare metal / VPS (systemd)    |
 
 ## Project layout
@@ -50,7 +50,10 @@ lumora/
 │   │   ├── aggregate.py     # Mention-rate aggregation across N runs
 │   │   ├── exporter.py      # CSV export (one row per answer)
 │   │   ├── cli.py           # `lumora` command-line interface
-│   │   └── api/             # projects, prompts, snapshots, CSV export
+│   │   ├── api/             # JSON API: CRUD + /api dashboard endpoints
+│   │   ├── web.py           # Server-rendered dashboard (HTML pages + HTMX fragments)
+│   │   ├── templates/       # Jinja2 templates (base, home, project, settings)
+│   │   └── static/          # app.css ("Dark Aurora") + app.js (Chart.js wiring)
 │   ├── alembic/             # Migrations
 │   ├── requirements.txt
 │   ├── docker-entrypoint.sh # Runs `alembic upgrade head`, then the CMD
@@ -58,7 +61,7 @@ lumora/
 ├── deploy/                  # Bare-metal / VPS: systemd unit + install script
 │   ├── install.sh
 │   └── lumora.service
-├── frontend/                # React + Recharts (placeholder)
+├── frontend/                # Reserved for a future SPA (dashboard is server-rendered today)
 ├── docker-compose.yml       # app + Postgres 16 (production)
 ├── .env.example
 └── pyproject.toml
@@ -122,6 +125,49 @@ key configured, asking each prompt `RUNS_PER_PROMPT` times. `lumora status` then
 reports per-(prompt, model) mention rates. Cron schedules set via `lumora
 schedule` are stored on the project and registered automatically whenever the
 app's in-process scheduler starts.
+
+## Web dashboard
+
+Running the app serves a self-hosted dashboard at the site root — no separate
+build step or Node toolchain. It's server-rendered with **Jinja2**, sprinkled
+with **HTMX** for partial updates (add a prompt, trigger a run, refresh the
+snapshot list without a full reload), **Alpine.js** for small interactions, and
+**Chart.js** for the visualizations. Styling is a hand-rolled "Dark Aurora"
+CSS theme with a built-in light/dark and color-accent switcher.
+
+| Page | Route | What it shows |
+| --- | --- | --- |
+| **Dashboard** | `GET /` | All projects with current mention rate and run-over-run change |
+| **New project** | `GET /projects/new` | Form to create a project (brand, aliases, competitors) |
+| **Project detail** | `GET /projects/{id}/view` | Mention-rate trend chart, per-provider comparison, prompt breakdown, snapshot history |
+| **Settings** | `GET /projects/{id}/settings` | Manage prompts (add / toggle active), cron schedule, project config |
+
+The pages read from the same JSON API documented below; HTMX fragment routes
+(`*/partial`, `/run`, `/prompts/add`, …) return just the changed markup.
+
+## API reference
+
+All routes are served by the FastAPI app; interactive docs live at `/docs`
+(Swagger) and `/redoc`. The **`/api/*`** routes power the dashboard (read-only,
+aggregated views); the unprefixed routes are the CRUD + action surface.
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/health` | Liveness probe (`{status, app, version, environment}`) |
+| `POST` | `/projects` | Create a project |
+| `GET` | `/projects` | List projects |
+| `GET` | `/projects/{id}` | Get one project |
+| `POST` | `/projects/{id}/prompts` | Add a prompt to a project |
+| `GET` | `/projects/{id}/prompts` | List a project's prompts |
+| `GET` | `/projects/{id}/snapshots` | List snapshot runs for a project |
+| `POST` | `/projects/{id}/snapshots/run` | Trigger an on-demand snapshot run |
+| `GET` | `/projects/{id}/export.csv` | Download results as CSV (one row per answer) |
+| `GET` | `/api/projects` | Dashboard: projects with mention rate + change |
+| `GET` | `/api/projects/{id}` | Dashboard: project summary + latest-run stats |
+| `GET` | `/api/projects/{id}/trends` | Mention-rate time series per provider |
+| `GET` | `/api/projects/{id}/comparison` | Per-provider mention rates for the latest run |
+| `GET` | `/api/projects/{id}/prompts` | Per-prompt breakdown for the latest run |
+| `GET` | `/api/projects/{id}/snapshots` | Snapshot run history (aggregated) |
 
 ## Alerting
 
@@ -261,9 +307,12 @@ SDK), the **LLM-as-judge scoring pipeline**, the **scheduled snapshot runner**,
 and the **`lumora` CLI**.
 
 Since then: **Postgres is the primary database** (psycopg 3, Alembic-managed,
-with the SQLite fallback retained), and Lumora ships **two deployment paths** —
-Docker Compose and bare metal / VPS via systemd — both auto-migrating on startup
-and exposing the CLI alongside the web server (Tasks 8 & 12).
+with the SQLite fallback retained, Tasks 8 & 12), Lumora ships **two deployment
+paths** — Docker Compose and bare metal / VPS via systemd — both auto-migrating
+on startup and exposing the CLI alongside the web server, and a **server-rendered
+dashboard** (JSON API + Jinja2/HTMX/Alpine/Chart.js UI) charts visibility over
+time (Tasks 9 & 10). The MVP is **feature-complete** and verified end-to-end
+(CLI, API, dashboard, live snapshot pipeline, full test suite — Task 13).
 
 The runner executes each prompt across **all** configured providers and repeats
 it `N` times (default 3) per snapshot, tagging every answer with its provider,
@@ -281,6 +330,32 @@ Smoke-test the providers (skips any without a key configured)::
 cd backend
 python scripts/smoke_providers.py --judge
 ```
+
+## Contributing
+
+Contributions are welcome. The project is plain Python with a small dependency
+surface and no frontend build step, so getting set up is quick:
+
+```bash
+cd backend
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+pip install -e .            # installs the `lumora` CLI in editable mode
+
+pytest                      # run the test suite
+ruff check .                # lint
+```
+
+- **Tests** live in `backend/tests/`. Most run against an in-memory/SQLite
+  database and don't touch live provider APIs; please add coverage with new
+  features. Note the suite skips dashboard tests automatically if Jinja2 isn't
+  installed.
+- **Style** is enforced with [ruff](https://docs.astral.sh/ruff/) — run
+  `ruff check .` (and `ruff format .`) before opening a PR.
+- **Database changes** must ship an Alembic migration (`alembic revision
+  --autogenerate -m "…"`); both Postgres and SQLite must stay green.
+- Open an issue to discuss larger changes first. By contributing you agree your
+  work is licensed under the project's **AGPL-3.0-or-later** license.
 
 ## License
 

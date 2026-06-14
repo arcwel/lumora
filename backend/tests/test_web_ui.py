@@ -62,8 +62,8 @@ def test_home_page_renders(db_session, project):
     assert "text/html" in resp.headers["content-type"]
     assert project.brand_name in resp.text
     assert f"/projects/{project.id}/view" in resp.text
-    # Front-end libs wired up.
-    assert "tailwindcss" in resp.text
+    # Front-end libs wired up (custom Dark Aurora CSS, no Tailwind).
+    assert "htmx.org" in resp.text
     assert "chart.js" in resp.text.lower()
 
 
@@ -146,6 +146,6 @@ def test_trigger_run_returns_fragment(db_session, project):
 
 def test_static_assets_served(db_session):
     css = client.get("/static/css/app.css")
-    assert css.status_code == 200 and "nav-link" in css.text
+    assert css.status_code == 200 and "topbar-nav" in css.text
     js = client.get("/static/js/app.js")
     assert js.status_code == 200 and "initCharts" in js.text

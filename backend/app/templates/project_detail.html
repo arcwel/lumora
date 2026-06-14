@@ -1,194 +1,327 @@
 {% extends "base.html" %}
 {% block title %}{{ project.brand_name }} · Lumora{% endblock %}
+{% block section_label %}{{ project.brand_name }}{% endblock %}
 
-{% block sidebar_extra %}
-<div class="mt-6 mb-2 px-2.5 text-xs font-semibold uppercase tracking-wide text-slate-400">{{ project.brand_name }}</div>
-<a href="/projects/{{ project.id }}/view" class="nav-link {{ 'nav-link-active' if nav == 'detail' else '' }}">
-  <svg class="h-[18px] w-[18px]" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12h4l3 8 4-16 3 8h4"/></svg>
-  Overview
-</a>
-<a href="/projects/{{ project.id }}/settings" class="nav-link {{ 'nav-link-active' if nav == 'settings' else '' }}">
-  <svg class="h-[18px] w-[18px]" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path stroke-linecap="round" d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 6.8 19.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 4 13.6H4a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 5.7 7.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 11 4.1V4a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg>
-  Settings
-</a>
+{% block topbar_nav_extra %}
+<a href="/projects/{{ project.id }}/view" class="{{ 'active' if nav == 'detail' else '' }}">Overview</a>
+<a href="/projects/{{ project.id }}/settings" class="{{ 'active' if nav == 'settings' else '' }}">Settings</a>
 {% endblock %}
 
 {% block content %}
-<!-- Breadcrumb + header -->
-<div class="mb-6">
-  <a href="/" class="text-xs font-medium text-slate-400 hover:text-slate-600">← Dashboard</a>
-</div>
-<div class="mb-8 flex flex-wrap items-start justify-between gap-4">
+
+{# ── Compute fallback values if the server hasn't reloaded yet ── #}
+{% set total_mentions = total_mentions if total_mentions is defined else project.providers|sum(attribute='mentions') %}
+{% set sorted_prompts = sorted_prompts if sorted_prompts is defined else prompts %}
+{% if best_prompt is not defined %}
+  {% set ns = namespace(bp=none) %}
+  {% for p in sorted_prompts %}
+    {% if ns.bp is none and p.mention_rate is not none and p.mention_rate > 0 %}
+      {% set ns.bp = p %}
+    {% endif %}
+  {% endfor %}
+  {% set best_prompt = ns.bp %}
+{% endif %}
+
+<!-- ── Hero ── -->
+<section class="hero">
   <div>
-    <h1 class="text-2xl font-semibold tracking-tight text-slate-900">{{ project.brand_name }}</h1>
-    <p class="mt-1 text-sm text-slate-500">{{ project.name }}</p>
+    <div class="hero-eyebrow">
+      <span class="live-dot"></span>
+      {% if project.latest_run_at %}Synced {{ project.latest_run_at|ago }}{% else %}No runs yet{% endif %}
+    </div>
+    <h1>
+      {% if total_mentions > 0 %}
+        <span class="num">{{ "{:,}".format(total_mentions) }}</span> mentions across {{ project.providers|length }} AI model{{ '' if project.providers|length == 1 else 's' }}.
+      {% else %}
+        Tracking <span class="num">{{ project.brand_name }}</span> across AI models.
+      {% endif %}
+    </h1>
+    {% if project.mention_rate is not none %}
+    <p>
+      Overall mention rate is {{ project.mention_rate|pct(1) }}{% if project.mention_rate_change is not none and project.mention_rate_change != 0 %} ({{ project.mention_rate_change|signed_pct }}){% endif %}.
+      {% if best_prompt and best_prompt.mention_rate is not none %}Top-performing prompt achieves {{ best_prompt.mention_rate|pct(1) }}.{% endif %}
+    </p>
+    {% else %}
+    <p>Run your first snapshot to see how AI assistants mention {{ project.brand_name }}.</p>
+    {% endif %}
+    <div class="hero-meta">
+      <span>Tracking <b>{{ project.n_active_prompts }} prompt{{ '' if project.n_active_prompts == 1 else 's' }}</b></span>
+      <span>Across <b>{{ project.providers|length }} provider{{ '' if project.providers|length == 1 else 's' }}</b></span>
+      {% if project.competitors %}
+      <span>vs. <b>{{ project.competitors|length }} competitor{{ '' if project.competitors|length == 1 else 's' }}</b></span>
+      {% endif %}
+    </div>
   </div>
-  <div class="flex items-center gap-2">
-    <a href="/projects/{{ project.id }}/export.csv"
-       class="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
-      <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2"/></svg>
-      Export CSV
-    </a>
+  <div class="hero-cta">
+    <a href="/projects/{{ project.id }}/settings" class="btn btn-ghost">Settings</a>
     <button
       hx-post="/projects/{{ project.id }}/run"
       hx-target="#snapshots-list"
       hx-swap="innerHTML"
       hx-disabled-elt="this"
-      class="inline-flex items-center gap-1.5 rounded-lg bg-accent-600 px-3.5 py-2 text-sm font-medium text-white shadow-sm hover:bg-accent-700 disabled:opacity-60">
+      class="btn btn-primary">
       <span class="htmx-indicator spinner"></span>
-      <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m6 4 14 8L6 20z"/></svg>
       Run snapshot
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 4 14 8L6 20z"/></svg>
     </button>
   </div>
-</div>
+</section>
 
-<!-- Hero metric -->
-<div class="grid grid-cols-1 gap-5 lg:grid-cols-3">
-  <div class="card p-6 lg:col-span-1">
-    <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Overall mention rate</p>
-    <div class="mt-2 flex items-end gap-3">
-      <span class="tnum text-5xl font-semibold tracking-tight text-slate-900">{{ project.mention_rate|pct }}</span>
+<!-- ── Provider cards ── -->
+{% if project.providers %}
+<section class="sources">
+  {% set provider_colors = [
+    'linear-gradient(135deg, oklch(70% 0.20 155 / 0.6), oklch(72% 0.18 200 / 0.6))',
+    'linear-gradient(135deg, oklch(74% 0.16 50 / 0.6), oklch(70% 0.20 25 / 0.6))',
+    'linear-gradient(135deg, oklch(75% 0.18 240 / 0.6), oklch(70% 0.18 290 / 0.6))',
+    'linear-gradient(135deg, oklch(75% 0.18 195 / 0.6), oklch(70% 0.20 220 / 0.6))',
+    'linear-gradient(135deg, oklch(72% 0.16 130 / 0.6), oklch(70% 0.18 165 / 0.6))',
+    'linear-gradient(135deg, oklch(70% 0.20 340 / 0.6), oklch(75% 0.16 10 / 0.6))'
+  ] %}
+  {% for prov in project.providers %}
+  <article class="src{% if loop.first %} active{% endif %}">
+    <div class="src-head">
+      <div class="src-mark" style="background: {{ provider_colors[loop.index0 % provider_colors|length] }};">{{ prov.provider[0]|upper }}</div>
+      <div>
+        <div class="src-name">{{ prov.provider }}</div>
+        <div class="src-sub">{{ prov.total_runs }} run{{ '' if prov.total_runs == 1 else 's' }}</div>
+      </div>
+    </div>
+    <div class="src-body">
+      <span class="src-count">{{ prov.mentions }}</span>
+      <span class="src-rate">{{ prov.mention_rate|pct }}</span>
+    </div>
+  </article>
+  {% endfor %}
+</section>
+{% endif %}
+
+<!-- ── KPI row ── -->
+<section class="kpis">
+  <!-- KPI: Mention Rate — wired -->
+  <article class="kpi">
+    <div class="kpi-label"><span class="led"></span> Mention Rate</div>
+    <div class="kpi-value{% if project.mention_rate is not none %} gradient{% endif %}">
+      {% if project.mention_rate is not none %}{{ (project.mention_rate * 100)|round(1) }}<span class="kpi-unit">%</span>{% else %}&mdash;{% endif %}
+    </div>
+    <div class="kpi-foot">
       {% if project.mention_rate_change is not none and project.mention_rate_change != 0 %}
         {% set up = project.mention_rate_change > 0 %}
-        <span class="badge {{ 'trend-up' if up else 'trend-down' }} mb-1.5">
-          {% if up %}
-            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/></svg>
-          {% else %}
-            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-          {% endif %}
-          {{ project.mention_rate_change|signed_pct }}
-        </span>
+        <span class="delta{% if not up %} down{% endif %}">{% if up %}&#9650;{% else %}&#9660;{% endif %} {{ project.mention_rate_change|signed_pct }}</span>
+      {% else %}
+        <span>&mdash;</span>
+      {% endif %}
+      <span>{{ project.n_active_prompts }} prompt{{ '' if project.n_active_prompts == 1 else 's' }} tracked</span>
+    </div>
+  </article>
+
+  <!-- KPI: Citation Rank — wired -->
+  {% set _avg_pos = avg_position if avg_position is defined and avg_position is not none else none %}
+  <article class="kpi">
+    <div class="kpi-label"><span class="led green"></span> Citation Rank</div>
+    <div class="kpi-value">
+      {% if _avg_pos is not none %}{{ _avg_pos }}<span class="kpi-unit"> avg</span>{% else %}&mdash;{% endif %}
+    </div>
+    <div class="kpi-foot">
+      <span>&mdash;</span>
+      <span>{{ project.providers|length }} provider{{ '' if project.providers|length == 1 else 's' }}</span>
+    </div>
+  </article>
+
+  <!-- KPI: Total Mentions — wired -->
+  <article class="kpi">
+    <div class="kpi-label"><span class="led violet"></span> Total Mentions</div>
+    <div class="kpi-value">{{ "{:,}".format(total_mentions) }}</div>
+    <div class="kpi-foot">
+      <span>&mdash;</span>
+      <span>{{ project.n_runs }} snapshot{{ '' if project.n_runs == 1 else 's' }}</span>
+    </div>
+  </article>
+
+  <!-- KPI: Share of Voice — future -->
+  <article class="kpi future-feature">
+    <div class="kpi-label"><span class="led magenta"></span> Share of Voice</div>
+    <div class="kpi-value">&mdash;<span class="kpi-unit">%</span></div>
+    <div class="kpi-foot">
+      <span>&mdash;</span>
+      <span>vs competitors</span>
+    </div>
+  </article>
+</section>
+
+<!-- ── Charts + Best Prompt ── -->
+<div class="main-grid" data-project-id="{{ project.id }}">
+  <!-- Trend chart -->
+  <section class="card">
+    <div class="card-head">
+      <div class="card-title">
+        Visibility trend
+        <small>Mention rate over time &middot; per provider</small>
+      </div>
+      {% if project.mention_rate_change is not none and project.mention_rate_change != 0 %}
+        <div class="tag">{% if project.mention_rate_change > 0 %}+{% endif %}{{ (project.mention_rate_change * 100)|round(1) }}% vs prior</div>
       {% endif %}
     </div>
-    <p class="mt-3 text-xs text-slate-400">
-      {% if project.latest_run_at %}Last run {{ project.latest_run_at|ago }}{% else %}No completed runs yet{% endif %}
-    </p>
-  </div>
-
-  <div class="card grid grid-cols-3 divide-x divide-slate-100 p-0 lg:col-span-2">
-    <div class="p-6">
-      <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Prompts</p>
-      <p class="tnum mt-2 text-2xl font-semibold text-slate-900">{{ project.n_active_prompts }}</p>
-      <p class="mt-1 text-xs text-slate-400">of {{ project.n_prompts }} total</p>
-    </div>
-    <div class="p-6">
-      <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Snapshots</p>
-      <p class="tnum mt-2 text-2xl font-semibold text-slate-900">{{ project.n_runs }}</p>
-      <p class="mt-1 text-xs text-slate-400">total runs</p>
-    </div>
-    <div class="p-6">
-      <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Providers</p>
-      <p class="tnum mt-2 text-2xl font-semibold text-slate-900">{{ project.providers|length }}</p>
-      <p class="mt-1 text-xs text-slate-400">tracked</p>
-    </div>
-  </div>
-</div>
-
-<!-- Charts -->
-<div class="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-5"
-     data-project-id="{{ project.id }}">
-  <div class="card p-6 lg:col-span-3">
-    <div class="mb-4 flex items-center justify-between">
-      <h2 class="text-sm font-semibold text-slate-900">Mention rate over time</h2>
-      <span class="text-xs text-slate-400">per provider</span>
-    </div>
-    <div class="relative h-64">
+    <div class="chart-wrap">
       <canvas id="trendChart"></canvas>
-      <p id="trendEmpty" class="absolute inset-0 hidden items-center justify-center text-sm text-slate-400">No trend data yet</p>
+      <p id="trendEmpty" class="hidden" style="display:none; position:absolute; inset:0; align-items:center; justify-content:center; font-size:14px; color:var(--muted);">No trend data yet</p>
     </div>
-  </div>
-  <div class="card p-6 lg:col-span-2">
-    <div class="mb-4 flex items-center justify-between">
-      <h2 class="text-sm font-semibold text-slate-900">Provider comparison</h2>
-      <span class="text-xs text-slate-400">latest run</span>
+  </section>
+
+  <!-- Best-performing prompt -->
+  <section class="card prompt-card">
+    <div class="card-head">
+      <div class="card-title">
+        Best-performing prompt
+        <small>{% if prompts_run_at is defined and prompts_run_at %}as of {{ prompts_run_at|ago }}{% else %}no runs{% endif %}</small>
+      </div>
+      {% if best_prompt and best_prompt.mention_rate is not none %}
+        <div class="tag">cited {{ best_prompt.mention_rate|pct }} of runs</div>
+      {% endif %}
     </div>
-    <div class="relative h-64">
+    {% if best_prompt %}
+    <div class="prompt-body">
+      <div class="prompt-q">{{ best_prompt.text }}</div>
+    </div>
+    <div class="prompt-meta">
+      <div class="prompt-stat">
+        <div class="prompt-stat-label">Mention rate</div>
+        <div class="prompt-stat-value">{{ best_prompt.mention_rate|pct }}</div>
+      </div>
+      <div class="prompt-stat">
+        <div class="prompt-stat-label">Category</div>
+        <div class="prompt-stat-value">{{ best_prompt.category if best_prompt.category else '—' }}</div>
+      </div>
+      {% if best_prompt.providers %}
+      {% set best_prov = best_prompt.providers|sort(attribute='mention_rate', reverse=true)|first %}
+      <div class="prompt-stat">
+        <div class="prompt-stat-label">Best provider</div>
+        <div class="prompt-stat-value">{{ best_prov.provider }}</div>
+      </div>
+      <div class="prompt-stat">
+        <div class="prompt-stat-label">Provider rate</div>
+        <div class="prompt-stat-value" style="color: var(--accent-green);">{{ best_prov.mention_rate|pct }}</div>
+      </div>
+      {% endif %}
+    </div>
+    {% else %}
+    <div style="padding:32px 0; text-align:center; color:var(--muted); font-size:14px;">
+      No prompt data yet. Run a snapshot to see results.
+    </div>
+    {% endif %}
+  </section>
+</div>
+
+<!-- ── Prompt list + Comparison chart ── -->
+<div class="lower-grid">
+  <!-- Sorted prompt list -->
+  <section class="card">
+    <div class="card-head">
+      <div class="card-title">
+        Prompt performance
+        <small>{% if prompts_run_at is defined and prompts_run_at %}as of {{ prompts_run_at|ago }}{% else %}no data{% endif %}</small>
+      </div>
+      <div class="tag">{{ sorted_prompts|length }} prompt{{ '' if sorted_prompts|length == 1 else 's' }}</div>
+    </div>
+    {% if sorted_prompts %}
+    <div class="prompt-list">
+      {% for p in sorted_prompts %}
+      <div class="prompt-row">
+        <div class="prompt-rank">{{ "%02d"|format(loop.index) }}</div>
+        <div class="prompt-text" title="{{ p.text }}">{{ p.text }}</div>
+        <div class="prompt-rate">{{ p.mention_rate|pct if p.mention_rate is not none else '—' }}</div>
+        <div class="prompt-providers">
+          {% for prov in p.providers[:3] %}
+          <span class="prov-pill">{{ prov.provider }} {{ prov.mention_rate|pct }}</span>
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div style="padding:32px 0; text-align:center; color:var(--muted); font-size:14px;">
+      No prompts configured. <a href="/projects/{{ project.id }}/settings" style="color:var(--c-secondary);">Add prompts</a>
+    </div>
+    {% endif %}
+  </section>
+
+  <!-- Comparison chart -->
+  <section class="card">
+    <div class="card-head">
+      <div class="card-title">
+        Provider comparison
+        <small>Latest run &middot; mention rate by provider</small>
+      </div>
+    </div>
+    <div class="chart-wrap">
       <canvas id="comparisonChart"></canvas>
-      <p id="comparisonEmpty" class="absolute inset-0 hidden items-center justify-center text-sm text-slate-400">No data yet</p>
+      <p id="comparisonEmpty" class="hidden" style="display:none; position:absolute; inset:0; align-items:center; justify-content:center; font-size:14px; color:var(--muted);">No data yet</p>
     </div>
-  </div>
+  </section>
 </div>
 
-<!-- Prompt performance -->
-<div class="mt-5 card overflow-hidden"
-     x-data="promptTable()" x-init="load()">
-  <div class="flex items-center justify-between border-b border-slate-100 px-6 py-4">
-    <h2 class="text-sm font-semibold text-slate-900">Prompt performance</h2>
-    <span class="text-xs text-slate-400">{% if prompts_run_at %}as of {{ prompts_run_at|ago }}{% else %}no runs{% endif %}</span>
-  </div>
+<!-- ── Competitor Share of Voice — future ── -->
+{% if project.competitors %}
+<div style="margin-top:18px;">
+  <section class="card future-feature">
+    <div class="card-head">
+      <div class="card-title">
+        Share of voice &middot; category
+        <small>vs {{ project.competitors|length }} competitor{{ '' if project.competitors|length == 1 else 's' }}</small>
+      </div>
+    </div>
+    <div class="competitor-list">
+      <div class="competitor you">
+        <div class="comp-logo" style="background: var(--grad-aurora);">{{ project.brand_name[0]|upper }}</div>
+        <div>
+          <div class="comp-name">{{ project.brand_name }}<span class="you-tag">you</span></div>
+          <div class="comp-bar"><div class="comp-bar-fill" style="width: 0%; background: var(--grad-aurora);"></div></div>
+        </div>
+        <div class="comp-share">&mdash;</div>
+      </div>
+      {% for comp in project.competitors %}
+      <div class="competitor">
+        <div class="comp-logo" style="background: oklch(25% 0.05 var(--c-surface-hue)); border: 1px solid var(--border);">{{ comp[0]|upper }}</div>
+        <div>
+          <div class="comp-name">{{ comp }}</div>
+          <div class="comp-bar"><div class="comp-bar-fill" style="width: 0%; background: oklch(40% 0.04 var(--c-surface-hue));"></div></div>
+        </div>
+        <div class="comp-share">&mdash;</div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+</div>
+{% endif %}
 
-  <template x-if="rows.length === 0">
-    <div class="px-6 py-12 text-center text-sm text-slate-400">No prompts configured yet.</div>
-  </template>
-
-  <table class="min-w-full text-sm" x-show="rows.length > 0">
-    <thead>
-      <tr class="border-b border-slate-100 text-left text-xs font-medium uppercase tracking-wide text-slate-400">
-        <th class="px-6 py-3">
-          <button @click="sortBy('text')" class="inline-flex items-center gap-1 hover:text-slate-600">Prompt</button>
-        </th>
-        <th class="px-6 py-3">
-          <button @click="sortBy('mention_rate')" class="inline-flex items-center gap-1 hover:text-slate-600">
-            Mention rate
-            <span x-show="sort.key === 'mention_rate'" x-text="sort.dir === 'desc' ? '↓' : '↑'"></span>
-          </button>
-        </th>
-        <th class="px-6 py-3">By provider</th>
-      </tr>
-    </thead>
-    <tbody class="divide-y divide-slate-50">
-      <template x-for="row in sortedRows" :key="row.id">
-        <tr class="hover:bg-slate-50/60">
-          <td class="max-w-md px-6 py-4">
-            <p class="truncate font-medium text-slate-800" x-text="row.text" :title="row.text"></p>
-            <p class="mt-0.5 text-xs text-slate-400" x-show="row.category" x-text="row.category"></p>
-            <span x-show="!row.is_active" class="badge badge-pending mt-1"><span class="badge-dot"></span>Inactive</span>
-          </td>
-          <td class="px-6 py-4">
-            <span class="tnum text-base font-semibold text-slate-900"
-                  x-text="row.mention_rate === null ? '—' : Math.round(row.mention_rate * 100) + '%'"></span>
-          </td>
-          <td class="px-6 py-4">
-            <div class="flex flex-wrap gap-3">
-              <template x-for="prov in row.providers" :key="prov.provider">
-                <div class="flex items-center gap-2">
-                  <span class="text-xs font-medium text-slate-500" x-text="prov.provider"></span>
-                  <div class="h-1.5 w-16 overflow-hidden rounded-full bg-slate-100">
-                    <div class="h-full rounded-full bg-accent-500" :style="`width: ${Math.round(prov.mention_rate * 100)}%`"></div>
-                  </div>
-                  <span class="tnum text-xs text-slate-400" x-text="Math.round(prov.mention_rate * 100) + '%'"></span>
-                </div>
-              </template>
-              <span x-show="row.providers.length === 0" class="text-xs text-slate-300">no data</span>
-            </div>
-          </td>
-        </tr>
-      </template>
-    </tbody>
-  </table>
-
-  <script type="application/json" id="prompt-data">{{ prompts_json|safe }}</script>
+<!-- ── Recent snapshots ── -->
+<div style="margin-top:18px;">
+  <section class="card">
+    <div class="card-head">
+      <div class="card-title">
+        Recent snapshots
+        <small>Auto-refreshes every 15s</small>
+      </div>
+      <span class="htmx-indicator spinner"></span>
+    </div>
+    <div id="snapshots-list"
+         hx-get="/projects/{{ project.id }}/snapshots/partial"
+         hx-trigger="every 15s"
+         hx-swap="innerHTML">
+      {% include "_snapshots.html" %}
+    </div>
+  </section>
 </div>
 
-<!-- Recent snapshots -->
-<div class="mt-5 card overflow-hidden">
-  <div class="flex items-center justify-between border-b border-slate-100 px-6 py-4">
-    <h2 class="text-sm font-semibold text-slate-900">Recent snapshots</h2>
-    <span class="htmx-indicator spinner"></span>
-  </div>
-  <div id="snapshots-list"
-       hx-get="/projects/{{ project.id }}/snapshots/partial"
-       hx-trigger="every 15s"
-       hx-swap="innerHTML">
-    {% include "_snapshots.html" %}
-  </div>
-</div>
+<!-- Alpine prompt data (used by sorted table if needed) -->
+<script type="application/json" id="prompt-data">{{ prompts_json|safe }}</script>
+
 {% endblock %}
 
 {% block scripts %}
 <script>
   document.addEventListener('DOMContentLoaded', function () {
-    const host = document.querySelector('[data-project-id]');
+    var host = document.querySelector('[data-project-id]');
     if (host) Lumora.initCharts(host.dataset.projectId);
   });
 </script>

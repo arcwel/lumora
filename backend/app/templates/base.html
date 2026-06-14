@@ -1,39 +1,14 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{% block title %}Lumora{% endblock %}</title>
 
-  <!-- Tailwind CSS (Play CDN) -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: {
-            sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
-          },
-          colors: {
-            // Single restrained accent.
-            accent: {
-              50: '#eef2ff', 100: '#e0e7ff', 200: '#c7d2fe',
-              500: '#6366f1', 600: '#4f46e5', 700: '#4338ca',
-            },
-          },
-          boxShadow: {
-            card: '0 1px 2px 0 rgba(15, 23, 42, 0.04), 0 1px 3px 0 rgba(15, 23, 42, 0.06)',
-            'card-hover': '0 4px 12px -2px rgba(15, 23, 42, 0.08), 0 2px 6px -2px rgba(15, 23, 42, 0.05)',
-          },
-        },
-      },
-    };
-  </script>
-
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
   <!-- HTMX + Chart.js -->
   <script src="https://unpkg.com/htmx.org@1.9.12" defer></script>
@@ -46,52 +21,153 @@
   <link rel="stylesheet" href="{{ url_for('static', path='/css/app.css') }}" />
 </head>
 
-<body class="h-full bg-slate-50 font-sans text-slate-900 antialiased">
-  <div x-data="{ sidebarOpen: false }" class="min-h-full">
+<body data-theme="blue">
 
-    <!-- Mobile backdrop -->
-    <div x-show="sidebarOpen" x-transition.opacity
-         @click="sidebarOpen = false"
-         class="fixed inset-0 z-30 bg-slate-900/30 lg:hidden" style="display:none"></div>
+<!-- Background layers -->
+<div class="bg-aurora" aria-hidden="true">
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+</div>
+<canvas class="particles" id="particles" aria-hidden="true"></canvas>
+<div class="grid-veil" aria-hidden="true"></div>
 
-    <!-- Sidebar -->
-    <aside
-      :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
-      class="fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-slate-200 bg-white px-4 py-6 transition-transform duration-200 ease-out lg:translate-x-0">
-      <a href="/" class="mb-8 flex items-center gap-2.5 px-2">
-        <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-600 text-sm font-bold text-white">L</span>
-        <span class="text-[15px] font-semibold tracking-tight">Lumora</span>
-      </a>
-
-      <nav class="flex-1 space-y-1">
-        <a href="/" class="nav-link {{ 'nav-link-active' if nav == 'home' else '' }}">
-          <svg class="h-[18px] w-[18px]" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
-          Dashboard
-        </a>
-        {% block sidebar_extra %}{% endblock %}
-      </nav>
-
-      <div class="mt-auto px-2 pt-4">
-        <p class="text-xs text-slate-400">AI visibility tracking</p>
+<div class="app">
+  <!-- Topbar -->
+  <header class="topbar">
+    <a href="/" class="brand">
+      <div class="brand-mark">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <defs>
+            <linearGradient id="bm" x1="0" y1="0" x2="24" y2="24">
+              <stop offset="0%" stop-color="var(--c-tertiary)"/>
+              <stop offset="50%" stop-color="var(--c-primary)"/>
+              <stop offset="100%" stop-color="var(--c-secondary)"/>
+            </linearGradient>
+          </defs>
+          <path d="M3.5 12 L8.5 4 L13.5 12 L10.7 12 L8.5 8 L6.3 12 Z" fill="url(#bm)"/>
+          <path d="M10.5 20 L15.5 12 L20.5 20 L17.7 20 L15.5 16 L13.3 20 Z" fill="url(#bm)" opacity="0.85"/>
+        </svg>
       </div>
-    </aside>
+      Lumora
+    </a>
+    <div class="section-label">{% block section_label %}Analytics{% endblock %}</div>
+    <nav class="topbar-nav">
+      <a href="/" class="{{ 'active' if nav == 'home' else '' }}">Dashboard</a>
+      {% block topbar_nav_extra %}{% endblock %}
+    </nav>
+    <div class="topbar-spacer"></div>
 
-    <!-- Main column -->
-    <div class="lg:pl-64">
-      <!-- Mobile top bar -->
-      <div class="sticky top-0 z-20 flex items-center gap-3 border-b border-slate-200 bg-white/80 px-4 py-3 backdrop-blur lg:hidden">
-        <button @click="sidebarOpen = true" class="rounded-md p-1.5 text-slate-600 hover:bg-slate-100">
-          <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
-        </button>
-        <span class="text-sm font-semibold">Lumora</span>
-      </div>
-
-      <main class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-10 lg:py-10">
-        {% block content %}{% endblock %}
-      </main>
+    <div class="theme-switcher" role="group" aria-label="Color theme">
+      <button class="theme-swatch" data-theme="blue"   aria-label="Blue theme"   style="background: linear-gradient(135deg, oklch(72% 0.20 230), oklch(70% 0.22 250));"></button>
+      <button class="theme-swatch" data-theme="orange" aria-label="Orange theme" style="background: linear-gradient(135deg, oklch(72% 0.24 25), oklch(78% 0.18 65));"></button>
+      <button class="theme-swatch" data-theme="green"  aria-label="Green theme"  style="background: linear-gradient(135deg, oklch(72% 0.22 130), oklch(78% 0.16 195));"></button>
+      <button class="theme-swatch" data-theme="gray"   aria-label="Gray theme"   style="background: linear-gradient(135deg, oklch(70% 0.04 260), oklch(85% 0.02 240));"></button>
     </div>
-  </div>
+  </header>
 
-  {% block scripts %}{% endblock %}
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+</div>
+
+<!-- Theme switcher + particles JS -->
+<script>
+  /* Color theme */
+  (function () {
+    var THEMES = ['blue', 'orange', 'green', 'gray'];
+    var body = document.body;
+    var saved = null;
+    try { saved = localStorage.getItem('lumora-theme'); } catch (e) {}
+    var initial = THEMES.indexOf(saved) !== -1 ? saved : 'blue';
+    body.setAttribute('data-theme', initial);
+
+    var swatches = document.querySelectorAll('.theme-swatch');
+    swatches.forEach(function (b) {
+      var t = b.getAttribute('data-theme');
+      if (t === initial) b.classList.add('active');
+      b.addEventListener('click', function () {
+        swatches.forEach(function (x) { x.classList.remove('active'); });
+        b.classList.add('active');
+        body.setAttribute('data-theme', t);
+        try { localStorage.setItem('lumora-theme', t); } catch (e) {}
+      });
+    });
+  })();
+
+  /* Particle field */
+  (function () {
+    var canvas = document.getElementById('particles');
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+    var dpr, w, h, particles = [], raf = 0;
+    var COLORS = ['rgba(167,139,250,', 'rgba(103,232,249,', 'rgba(255,122,217,'];
+
+    function resize() {
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      w = window.innerWidth; h = window.innerHeight;
+      canvas.width = w * dpr; canvas.height = h * dpr;
+      canvas.style.width = w + 'px'; canvas.style.height = h + 'px';
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      init();
+    }
+
+    function init() {
+      var count = Math.max(40, Math.min(80, Math.floor((w * h) / 22000)));
+      particles = [];
+      for (var i = 0; i < count; i++) {
+        particles.push({
+          x: Math.random() * w, y: Math.random() * h,
+          vx: (Math.random() - 0.5) * 0.15, vy: (Math.random() - 0.5) * 0.15,
+          r: Math.random() * 1.4 + 0.3,
+          c: COLORS[i % COLORS.length],
+          a: Math.random() * 0.35 + 0.2,
+          tw: Math.random() * Math.PI * 2, tws: Math.random() * 0.008 + 0.003,
+        });
+      }
+    }
+
+    function tick() {
+      ctx.clearRect(0, 0, w, h);
+      for (var i = 0; i < particles.length; i++) {
+        var p = particles[i];
+        for (var j = i + 1; j < particles.length; j++) {
+          var q = particles[j];
+          var dx = p.x - q.x, dy = p.y - q.y, d2 = dx * dx + dy * dy;
+          if (d2 < 12000) {
+            var alpha = (1 - d2 / 12000) * 0.08;
+            ctx.strokeStyle = 'rgba(167,139,250,' + alpha + ')';
+            ctx.lineWidth = 0.5;
+            ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); ctx.stroke();
+          }
+        }
+      }
+      for (var k = 0; k < particles.length; k++) {
+        var pt = particles[k];
+        pt.x += pt.vx; pt.y += pt.vy; pt.tw += pt.tws;
+        if (pt.x < -10) pt.x = w + 10;
+        if (pt.x > w + 10) pt.x = -10;
+        if (pt.y < -10) pt.y = h + 10;
+        if (pt.y > h + 10) pt.y = -10;
+        var tw = Math.sin(pt.tw) * 0.5 + 0.5;
+        var a = pt.a * (0.5 + tw * 0.6);
+        ctx.beginPath();
+        ctx.fillStyle = pt.c + (a * 0.2) + ')';
+        ctx.arc(pt.x, pt.y, pt.r * 3.5, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath();
+        ctx.fillStyle = pt.c + a + ')';
+        ctx.arc(pt.x, pt.y, pt.r, 0, Math.PI * 2); ctx.fill();
+      }
+      raf = requestAnimationFrame(tick);
+    }
+
+    var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    window.addEventListener('resize', resize);
+    resize();
+    if (!reduced) tick(); else { tick(); cancelAnimationFrame(raf); }
+  })();
+</script>
+
+{% block scripts %}{% endblock %}
 </body>
 </html>
