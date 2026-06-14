@@ -39,6 +39,13 @@ class Settings(BaseSettings):
     scheduler_enabled: bool = True
     scheduler_timezone: str = "UTC"
 
+    # --- Provider request tuning ------------------------------------------
+    # Max output tokens per provider request. Reasoning models (e.g.
+    # gemini-2.5-flash) spend ~1.5k hidden "thinking" tokens before emitting
+    # the visible answer, so a low cap (the old 1024) truncates responses
+    # before shops are named. 4096 leaves ample room for thinking + answer.
+    default_max_tokens: int = 4096
+
     # --- LLM provider API keys --------------------------------------------
     openai_api_key: str | None = None
     anthropic_api_key: str | None = None
@@ -54,10 +61,37 @@ class Settings(BaseSettings):
     # --- Snapshot capture --------------------------------------------------
     # Models queried on every snapshot, one per provider, as a comma-separated
     # list. Providers without a configured API key are skipped at run time.
-    snapshot_models: str = "gpt-4o-mini,claude-haiku-4-5-20251001,gemini-2.0-flash"
+    # NOTE: gemini-2.0-flash was retired by Google (returns 404); use 2.5-flash.
+    snapshot_models: str = "gpt-4o-mini,claude-haiku-4-5-20251001,gemini-2.5-flash"
     # Variance passes per prompt per provider. AI answers are non-deterministic,
     # so each prompt is asked N times and mention rate is reported as a fraction.
     runs_per_prompt: int = 3
+
+    # --- Alerting ----------------------------------------------------------
+    # After each snapshot run, mention rate is compared against the previous
+    # run; an alert fires when it moves by at least ``alert_threshold`` (a
+    # fraction, so 0.10 = 10 percentage points). All channels are optional —
+    # each is skipped silently when its credentials are unset.
+    alert_threshold: float = 0.10
+    # Public dashboard base URL (e.g. https://lumora.example.com). When set,
+    # alert messages include a deep link to the project's analytics view.
+    base_url: str | None = None
+
+    # Slack incoming-webhook URL.
+    slack_webhook_url: str | None = None
+
+    # SMTP server + addresses for email alerts.
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_user: str | None = None
+    smtp_password: str | None = None
+    smtp_use_tls: bool = True
+    alert_email_to: str | None = None
+    alert_email_from: str | None = None
+
+    # Telegram bot token + target chat id.
+    telegram_bot_token: str | None = None
+    telegram_chat_id: str | None = None
 
     @property
     def snapshot_model_list(self) -> list[str]:

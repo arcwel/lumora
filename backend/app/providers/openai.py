@@ -11,7 +11,6 @@ import logging
 
 from app.config import settings
 from app.providers.base import (
-    DEFAULT_MAX_TOKENS,
     DEFAULT_TIMEOUT_SECONDS,
     BaseProvider,
     ProviderError,
@@ -34,14 +33,14 @@ class OpenAIProvider(BaseProvider):
         api_key: str | None = None,
         model: str | None = None,
         *,
-        max_tokens: int = DEFAULT_MAX_TOKENS,
+        max_tokens: int | None = None,
         timeout: float = DEFAULT_TIMEOUT_SECONDS,
     ) -> None:
         super().__init__(
             api_key=api_key or settings.openai_api_key,
             model=model or settings.default_provider_model or DEFAULT_OPENAI_MODEL,
         )
-        self.max_tokens = max_tokens
+        self.max_tokens = max_tokens if max_tokens is not None else settings.default_max_tokens
         self.timeout = timeout
 
     async def query(self, prompt: str) -> ProviderResponse:

@@ -9,8 +9,10 @@ from __future__ import annotations
 import abc
 from dataclasses import dataclass
 
-#: Default per-request settings shared by the concrete adapters.
-DEFAULT_MAX_TOKENS = 1024
+#: Default per-request settings shared by the concrete adapters. This is only a
+#: hard fallback for adapters constructed outside the app (e.g. ad-hoc scripts);
+#: the running app resolves max tokens from ``settings.default_max_tokens``.
+DEFAULT_MAX_TOKENS = 4096
 DEFAULT_TIMEOUT_SECONDS = 60.0
 
 

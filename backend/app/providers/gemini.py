@@ -2,7 +2,8 @@
 
 Wraps the official ``google-genai`` SDK (the current unified client, *not* the
 legacy ``google-generativeai`` package) behind the vendor-agnostic
-``BaseProvider`` interface. Defaults to ``gemini-2.0-flash``.
+``BaseProvider`` interface. Defaults to ``gemini-2.5-flash`` (``2.0-flash`` was
+retired by Google and now returns 404).
 """
 
 from __future__ import annotations
@@ -11,7 +12,6 @@ import logging
 
 from app.config import settings
 from app.providers.base import (
-    DEFAULT_MAX_TOKENS,
     DEFAULT_TIMEOUT_SECONDS,
     BaseProvider,
     ProviderError,
@@ -20,7 +20,10 @@ from app.providers.base import (
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_GEMINI_MODEL = "gemini-2.0-flash"
+#: ``gemini-2.0-flash`` was retired (404); 2.5-flash is the current cheap model.
+#: Note it is a reasoning model that spends hidden "thinking" tokens, so the
+#: max-token budget must stay high enough to fit thinking + the visible answer.
+DEFAULT_GEMINI_MODEL = "gemini-2.5-flash"
 
 
 class GeminiProvider(BaseProvider):
@@ -33,14 +36,14 @@ class GeminiProvider(BaseProvider):
         api_key: str | None = None,
         model: str | None = None,
         *,
-        max_tokens: int = DEFAULT_MAX_TOKENS,
+        max_tokens: int | None = None,
         timeout: float = DEFAULT_TIMEOUT_SECONDS,
     ) -> None:
         super().__init__(
             api_key=api_key or settings.google_api_key,
             model=model or DEFAULT_GEMINI_MODEL,
         )
-        self.max_tokens = max_tokens
+        self.max_tokens = max_tokens if max_tokens is not None else settings.default_max_tokens
         self.timeout = timeout
 
     async def query(self, prompt: str) -> ProviderResponse:
