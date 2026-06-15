@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sign in · Lumora</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="{{ url_for('static', path='/css/app.css') }}" />
+</head>
+
+<body data-theme="blue">
+
+<!-- Background layers (match the dashboard) -->
+<div class="bg-aurora" aria-hidden="true">
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+</div>
+<div class="grid-veil" aria-hidden="true"></div>
+
+<div class="login-wrap">
+  <div class="card login-card">
+    <a href="/login" class="brand login-brand">
+      <div class="brand-mark">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <defs>
+            <linearGradient id="bm" x1="0" y1="0" x2="24" y2="24">
+              <stop offset="0%" stop-color="var(--c-tertiary)"/>
+              <stop offset="50%" stop-color="var(--c-primary)"/>
+              <stop offset="100%" stop-color="var(--c-secondary)"/>
+            </linearGradient>
+          </defs>
+          <path d="M3.5 12 L8.5 4 L13.5 12 L10.7 12 L8.5 8 L6.3 12 Z" fill="url(#bm)"/>
+          <path d="M10.5 20 L15.5 12 L20.5 20 L17.7 20 L15.5 16 L13.3 20 Z" fill="url(#bm)" opacity="0.85"/>
+        </svg>
+      </div>
+      Lumora
+    </a>
+
+    <h1 class="login-title">This site is protected</h1>
+    <p class="login-sub">Enter the password to continue.</p>
+
+    {% if error %}
+    <div class="login-error">Incorrect password. Try again.</div>
+    {% endif %}
+
+    <form method="post" action="/login" class="login-form">
+      <div class="form-group" style="margin-bottom:16px;">
+        <label class="form-label" for="password">Password</label>
+        <input id="password" name="password" type="password" class="form-input"
+               autocomplete="current-password" autofocus required
+               placeholder="••••••••" />
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center;">
+        Unlock
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- Apply the visitor's saved colour theme, matching the dashboard switcher. -->
+<script>
+  (function () {
+    var THEMES = ['blue', 'orange', 'green', 'gray'];
+    var saved = null;
+    try { saved = localStorage.getItem('lumora-theme'); } catch (e) {}
+    if (THEMES.indexOf(saved) !== -1) document.body.setAttribute('data-theme', saved);
+  })();
+</script>
+
+</body>
+</html>

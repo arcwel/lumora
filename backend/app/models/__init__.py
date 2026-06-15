@@ -8,6 +8,7 @@ from app.models.answer import Answer
 from app.models.project import Project
 from app.models.prompt import Prompt
 from app.models.score import Score
+from app.models.site_setting import SiteSetting
 from app.models.snapshot import SnapshotRun, SnapshotStatus
 
 __all__ = [
@@ -15,6 +16,7 @@ __all__ = [
     "Project",
     "Prompt",
     "Score",
+    "SiteSetting",
     "SnapshotRun",
     "SnapshotStatus",
 ]

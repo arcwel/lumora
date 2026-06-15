@@ -67,6 +67,17 @@ app.add_middleware(ProxyHeadersMiddleware, trusted_hosts=["*"])
 # ``/projects/{project_id}`` — otherwise "new" would be parsed as an id and 422.
 ui_enabled = register_web(app)
 
+# Optional single-shared-password site protection. Registered only when the UI
+# is enabled, since enforcement depends on the server-rendered login page that
+# lives in the web router. A no-op until an admin turns it on from the
+# dashboard (see app.auth.site_protection_middleware).
+if ui_enabled:
+    from starlette.middleware.base import BaseHTTPMiddleware
+
+    from app.auth import site_protection_middleware
+
+    app.add_middleware(BaseHTTPMiddleware, dispatch=site_protection_middleware)
+
 app.include_router(api_router)
 
 

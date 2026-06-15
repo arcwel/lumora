@@ -64,6 +64,58 @@
       <button class="theme-swatch" data-theme="green"  aria-label="Green theme"  style="background: linear-gradient(135deg, oklch(72% 0.22 130), oklch(78% 0.16 195));"></button>
       <button class="theme-swatch" data-theme="gray"   aria-label="Gray theme"   style="background: linear-gradient(135deg, oklch(70% 0.04 260), oklch(85% 0.02 240));"></button>
     </div>
+
+    {# Site-wide password protection — sits next to the colour picker. #}
+    {% set sp = site_protection() %}
+    <div class="protect-wrap" x-data="{ open: false, enabled: {{ 'true' if sp.enabled else 'false' }} }" @keydown.escape.window="open = false">
+      <button type="button" class="icon-btn protect-btn" :class="{ 'is-on': enabled }"
+              @click="open = !open" aria-label="Site password protection" title="Site password protection">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="4" y="10" width="16" height="10" rx="2.4"/>
+          <path d="M8 10V7a4 4 0 0 1 8 0v3" :stroke-dasharray="enabled ? '0' : '2 2.2'"/>
+        </svg>
+      </button>
+
+      <div class="protect-panel" x-show="open" x-cloak @click.outside="open = false"
+           x-transition.opacity.duration.150ms>
+        <div class="protect-panel-title">Site protection</div>
+        <p class="protect-panel-sub">One shared password for the whole site.</p>
+
+        {% if request.query_params.get('site_protection') == 'needs_password' %}
+        <div class="protect-msg protect-msg-error">Set a password before enabling protection.</div>
+        {% elif request.query_params.get('site_protection') == 'saved' %}
+        <div class="protect-msg protect-msg-ok">Settings saved.</div>
+        {% endif %}
+
+        <form method="post" action="/settings/site-protection">
+          <label class="protect-toggle">
+            <input type="checkbox" name="enabled" value="on" x-model="enabled" />
+            <span class="protect-track"><span class="protect-thumb"></span></span>
+            <span class="protect-toggle-label" x-text="enabled ? 'Protection on' : 'Protection off'"></span>
+          </label>
+
+          <div class="form-group" style="margin:14px 0 16px;">
+            <label class="form-label" for="protect-password" style="font-size:12px;">
+              {% if sp.has_password %}New password{% else %}Password{% endif %}
+            </label>
+            <input id="protect-password" name="password" type="password" class="form-input"
+                   autocomplete="new-password"
+                   :required="enabled && {{ 'false' if sp.has_password else 'true' }}"
+                   placeholder="{% if sp.has_password %}Leave blank to keep current{% else %}Choose a password{% endif %}" />
+            <div class="form-hint">
+              {% if sp.has_password %}A password is set. Leave blank to keep it, or type a new one to change it.
+              {% else %}Required to turn protection on. Lockout recovery is via the database only.{% endif %}
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-sm" style="width:100%; justify-content:center;">Save</button>
+        </form>
+
+        {% if sp.enabled and sp.has_password %}
+        <a href="/logout" class="protect-logout">Log out of this session</a>
+        {% endif %}
+      </div>
+    </div>
   </header>
 
   <main>

@@ -30,6 +30,14 @@ from app.api.dashboard import (
     list_project_snapshots,
     list_project_summaries,
 )
+from app.auth import (
+    clear_auth_cookie,
+    get_site_setting,
+    hash_password,
+    protection_state,
+    set_auth_cookie,
+    verify_password,
+)
 from app.db import get_db
 from app.models.project import Project
 from app.models.prompt import Prompt
@@ -95,6 +103,9 @@ try:  # pragma: no cover - exercised by deployment, not the test sandbox
     templates.env.filters["signed_pct"] = _fmt_signed_pct
     templates.env.filters["dt"] = _fmt_dt
     templates.env.filters["ago"] = _fmt_ago
+    # Exposed to every template so the topbar protection widget can reflect the
+    # current enabled / password-set state without each route passing it in.
+    templates.env.globals["site_protection"] = protection_state
 except Exception as exc:  # noqa: BLE001 - any import/instantiation failure disables the UI
     logger.warning("Dashboard UI disabled (Jinja2 unavailable): %s", exc)
 
@@ -120,6 +131,94 @@ def home(request: Request, db: Session = Depends(get_db)):
         "home.html",
         {"request": request, "projects": projects, "nav": "home"},
     )
+
+
+@router.get("/login")
+def login_form(request: Request, db: Session = Depends(get_db)):
+    """Site-password login page.
+
+    If protection isn't active, or the visitor is already authenticated, there's
+    nothing to log into — bounce to the dashboard.
+    """
+
+    from app.auth import is_authenticated
+
+    setting = get_site_setting(db)
+    active = setting.protection_enabled and bool(setting.password_hash)
+    if not active or is_authenticated(request, setting):
+        return RedirectResponse(url="/", status_code=303)
+    return templates.TemplateResponse(
+        request, "login.html", {"request": request, "error": False}
+    )
+
+
+@router.post("/login")
+async def login_submit(request: Request, db: Session = Depends(get_db)):
+    """Verify the submitted password and set the session cookie on success."""
+
+    setting = get_site_setting(db)
+    active = setting.protection_enabled and bool(setting.password_hash)
+    if not active:
+        return RedirectResponse(url="/", status_code=303)
+
+    form = await _form(request)
+    password = str(form.get("password", ""))
+    if verify_password(password, setting.password_hash):
+        response = RedirectResponse(url="/", status_code=303)
+        set_auth_cookie(response, setting.password_hash)
+        return response
+
+    return templates.TemplateResponse(
+        request,
+        "login.html",
+        {"request": request, "error": True},
+        status_code=401,
+    )
+
+
+@router.get("/logout")
+def logout(request: Request):
+    """Clear the session cookie and return to the login page."""
+
+    response = RedirectResponse(url="/login", status_code=303)
+    clear_auth_cookie(response)
+    return response
+
+
+@router.post("/settings/site-protection")
+async def save_site_protection(request: Request, db: Session = Depends(get_db)):
+    """Enable/disable site protection and/or set the shared password.
+
+    Reachable from the topbar panel next to the colour-theme picker. While
+    protection is off this is open (that's how it gets turned on the first
+    time); once on, the middleware ensures only an authenticated admin reaches
+    it. Saving keeps the admin logged in by (re)issuing the session cookie.
+    """
+
+    form = await _form(request)
+    enabled = str(form.get("enabled", "")).lower() in {"on", "true", "1", "yes"}
+    new_password = str(form.get("password", "")).strip()
+
+    setting = get_site_setting(db)
+
+    # A new password (re)sets the hash whether enabling or just changing it.
+    if new_password:
+        setting.password_hash = hash_password(new_password)
+
+    # Can't enable protection without a password to check against.
+    if enabled and not setting.password_hash:
+        db.commit()
+        return RedirectResponse(url="/?site_protection=needs_password", status_code=303)
+
+    setting.protection_enabled = enabled
+    db.commit()
+
+    response = RedirectResponse(url="/?site_protection=saved", status_code=303)
+    # Keep the admin authenticated across the change (the new hash rotates the
+    # cookie value, which would otherwise log them straight back out).
+    if setting.protection_enabled and setting.password_hash:
+        set_auth_cookie(response, setting.password_hash)
+    return response
 
 
 @router.get("/projects/new")
