@@ -7,6 +7,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from app import __version__
 from app.api import api_router
@@ -47,6 +48,15 @@ app = FastAPI(
     description="Self-hosted tracker for how a brand appears in AI assistant answers.",
     lifespan=lifespan,
 )
+
+# Trust X-Forwarded-* headers from the TLS-terminating reverse proxy (nginx).
+# Without this, every request looks like plain HTTP to the app and
+# ``url_for('static', ...)`` emits ``http://`` absolute URLs, which browsers
+# block as mixed content on the HTTPS site — leaving the page unstyled/blank.
+# ``trusted_hosts=["*"]`` is safe here because the app only ever receives
+# traffic via the local nginx proxy. Pair with gunicorn's
+# ``--forwarded-allow-ips '*'`` (see deploy/lumora.service).
+app.add_middleware(ProxyHeadersMiddleware, trusted_hosts=["*"])
 
 # Mount static assets and (when Jinja2 is installed) the server-rendered
 # dashboard. ``ui_enabled`` is False in environments without Jinja2 — the JSON

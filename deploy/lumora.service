@@ -34,10 +34,14 @@ ExecStartPre=/opt/lumora/.venv/bin/alembic upgrade head
 # Gunicorn with a SINGLE UvicornWorker. APScheduler runs in-process, so more
 # than one worker would register duplicate cron jobs and fire snapshots N times.
 # Scale request throughput with a reverse proxy / multiple hosts, not workers.
+# --forwarded-allow-ips '*' lets the UvicornWorker honour X-Forwarded-* from the
+# nginx reverse proxy so the app knows requests arrive over HTTPS (otherwise
+# url_for emits http:// asset URLs that browsers block as mixed content).
 ExecStart=/opt/lumora/.venv/bin/gunicorn app.main:app \
     --workers 1 \
     --worker-class uvicorn.workers.UvicornWorker \
     --bind 0.0.0.0:8000 \
+    --forwarded-allow-ips '*' \
     --timeout 120
 
 Restart=on-failure
